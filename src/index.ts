@@ -11,14 +11,18 @@ declare module 'discord.js' {
 }
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences
+    ],
 });
 
 client.commands = new Collection();
 
 const commandsPath = path.join(__dirname, 'commands');
-// Ensure directory exists or handle reading recursively... 
-// For now, flat structure
 if (fs.existsSync(commandsPath)) {
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
     for (const file of commandFiles) {
@@ -30,11 +34,87 @@ if (fs.existsSync(commandsPath)) {
     }
 }
 
+import { Logger } from './services/logger';
 import { initDb } from './config/mysql';
+import { syncMinecraftRoles } from './services/syncService';
+import { initGameLogWatcher } from './services/gameLogWatcher';
 
 client.once('ready', async () => {
     await initDb();
+    initGameLogWatcher();
     console.log(`Loggueado como ${client.user?.tag}!`);
+    
+    // Internal API to check presence
+    const API_PORT = process.env.PORT || process.env.BOT_API_PORT || 3002;
+    Bun.serve({
+        port: API_PORT,
+        async fetch(req: Request) {
+            const url = new URL(req.url);
+
+            // CORS Headers
+            const headers = {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Content-Type': 'application/json'
+            };
+
+            // Handle Preflight
+            if (req.method === 'OPTIONS') {
+                return new Response(null, { headers });
+            }
+
+            if (url.pathname === '/presence') {
+                const ids = url.searchParams.get('ids')?.split(',') || [];
+                // console.log(`[API] Presence check requested for: ${ids.join(',')}`); // Commented out to reduce spam
+                const results: Record<string, string> = {};
+                
+                // Check all known guilds cache
+                for (const guild of client.guilds.cache.values()) {
+                    for (const id of ids) {
+                        let member = guild.members.cache.get(id);
+                        if (!member || !member.presence) {
+                            try {
+                                member = await guild.members.fetch({ user: id, withPresences: true });
+                            } catch {}
+                        }
+
+                        if (member && member.presence) {
+                            // Prioritize 'online' > 'dnd' > 'idle' > 'offline'
+                            const status = member.presence.status;
+                            if (!results[id] || (status === 'online') || (status === 'dnd' && results[id] !== 'online')) {
+                                results[id] = status;
+                            }
+                        }
+                    }
+                }
+                
+                return new Response(JSON.stringify(results), { headers });
+            }
+
+            if (url.pathname === '/log' && req.method === 'POST') {
+                try {
+                    const body = await req.json();
+                    const { title, message, level } = body;
+                    await Logger.log(title || 'System Log', message || 'No content', level || 'info');
+                    return new Response(JSON.stringify({ success: true }), { headers });
+                } catch (e) {
+                    console.error('Error processing log request:', e);
+                    return new Response("Bad Request", { status: 400, headers });
+                }
+            }
+
+            return new Response("Not Found", { status: 404, headers });
+        }
+    });
+    console.log(`Bot Internal API running on port ${API_PORT}`);
+
+    // Initial sync
+    syncMinecraftRoles(client);
+    Logger.log('Bot Started', `CrystalBot v2.0 is now online using Bun!\nAPI Port: ${API_PORT}`, 'success');
+    
+    // Sync every 30 minutes
+    setInterval(() => syncMinecraftRoles(client), 30 * 60 * 1000);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -48,6 +128,14 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
         console.error(error);
         await interaction.reply({ content: 'Hubo un error al ejecutar el comando.', ephemeral: true });
+    }
+});
+
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+
+    if (message.mentions.has(client.user!)) {
+        await message.reply('¡Hola! Soy CrystalBot v2.0 funcionando con Bun 🚀');
     }
 });
 
