@@ -1,64 +1,64 @@
-# 🤖 CrystalTides Discord Bot
+# 🤖 Bot de Discord CrystalTides
 
-Official Discord bot for the **CrystalTides SMP** ecosystem. It bridges the gap between the Discord community, the Minecraft server, and the web platform.
+Bot oficial de Discord para el ecosistema **CrystalTides SMP**. Conecta la comunidad de Discord con el servidor de Minecraft y la plataforma web.
 
-## ✨ Features
+## ✨ Características
 
-- **Account Linking**: Connects Discord accounts with Minecraft/Web profiles via `/link`.
-- **Role Synchronization**: Automatically syncs in-game ranks (VIP, Staff) to Discord roles.
-- **Server Monitoring**: Real-time status updates of the Minecraft server.
-- **Support Tickets**: Integration with the web-based ticket system (Planned).
+- **Vinculación de Cuentas**: Conecta cuentas de Discord con perfiles de Minecraft/Web usando `/link`.
+- **Sincronización de Roles**: Sincroniza automáticamente rangos del juego (VIP, Staff) con roles de Discord.
+- **Monitoreo del Servidor**: Actualizaciones en tiempo real del estado del servidor de Minecraft.
+- **Tickets de Soporte**: Integración con el sistema de tickets web (Planeado).
 
-## 🛠️ Commands
+## 🛠️ Comandos
 
-| Command        | Description                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------------- |
-| `/link [code]` | Links your Discord account to your CrystalTides profile using a code from the web dashboard. |
-| `/ping`        | Checks the bot's latency and health.                                                         |
+| Comando          | Descripción                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| `/link [codigo]` | Vincula tu cuenta de Discord a tu perfil de CrystalTides usando un código del panel web. |
+| `/ping`          | Verifica la latencia y salud del bot.                                                    |
 
-## 🚀 Setup & Development
+## 🚀 Configuración y Desarrollo
 
-This bot is built with **Discord.js** and runs on **Bun**.
+Este bot está construido con **Discord.js** y corre sobre **Bun**.
 
-### Prerequisites
+### Prerrequisitos
 
-- [Bun](https://bun.sh/) runtime.
-- A Discord Application with "Bot" and "applications.commands" scopes.
+- Runtime [Bun](https://bun.sh/).
+- Una Aplicación de Discord con scopes "Bot" y "applications.commands".
 
-### Installation
+### Instalación
 
 ```bash
-# Install dependencies
+# Instalar dependencias
 bun install
 ```
 
-### Environment Variables (.env)
+### Variables de Entorno (.env)
 
-Create a `.env` file in this directory:
+Crea un archivo `.env` en este directorio:
 
 ```env
-DISCORD_TOKEN=your_bot_token
-DISCORD_CLIENT_ID=your_client_id
-DISCORD_GUILD_ID=your_guild_id
+DISCORD_TOKEN=tu_token_del_bot
+DISCORD_CLIENT_ID=tu_client_id
+DISCORD_GUILD_ID=tu_guild_id
 
-# Supabase (for database connection)
+# Supabase (para conexión a base de datos)
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 
-# MySQL (for advanced game data)
+# MySQL (para datos avanzados del juego)
 DB_HOST=...
 DB_USER=...
 ```
 
-### Running
+### Ejecución
 
 ```bash
-# Development mode (watch)
+# Modo desarrollo (watch)
 bun dev
 
-# Deploy slash commands (run once when commands change)
+# Desplegar comandos slash (ejecutar una vez cuando cambien los comandos)
 bun deploy
 
-# Production start
+# Inicio en producción
 bun start
 ```
