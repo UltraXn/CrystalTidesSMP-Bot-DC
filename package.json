@@ -2,6 +2,7 @@
   "name": "discord-bot",
   "version": "1.0.0",
   "main": "src/index.ts",
+  "description": "Bot oficial para la integración entre Discord, Minecraft y Web de CrystalTides SMP.",
   "scripts": {
     "start": "bun src/index.ts",
     "dev": "bun --watch src/index.ts",
