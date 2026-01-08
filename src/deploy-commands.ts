@@ -31,6 +31,15 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN!);
              throw new Error("Missing DISCORD_CLIENT_ID in .env");
         }
 
+        if (process.env.DISCORD_GUILD_ID) {
+            console.log(`Registrando comandos para el gremio: ${process.env.DISCORD_GUILD_ID}`);
+            await rest.put(
+                Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID),
+                { body: commands },
+            );
+        }
+
+        console.log('Registrando comandos globalmente...');
         await rest.put(
             Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
             { body: commands },
