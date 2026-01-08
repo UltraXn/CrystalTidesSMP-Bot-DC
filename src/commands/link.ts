@@ -14,6 +14,7 @@ export default {
         const codeInput = interaction.options.getString('codigo');
         const discordId = interaction.user.id;
         const discordTag = interaction.user.tag;
+        const discordAvatar = interaction.user.displayAvatarURL({ extension: 'png', size: 256 }) || null;
 
         if (!codeInput) {
             // --- GENERATE CODE ---
@@ -27,8 +28,8 @@ export default {
 
             try {
                 await dbRequest(
-                    'INSERT INTO universal_links (code, source, source_id, player_name, expires_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE expires_at = ?',
-                    [code, 'discord', discordId, discordTag, expiresAt, expiresAt]
+                    'INSERT INTO universal_links (code, source, source_id, player_name, avatar_url, expires_at) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE expires_at = ?',
+                    [code, 'discord', discordId, discordTag, discordAvatar, expiresAt, expiresAt]
                 );
 
                 await interaction.reply({ 
