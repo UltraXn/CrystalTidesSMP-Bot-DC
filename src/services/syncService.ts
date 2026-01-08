@@ -30,13 +30,14 @@ export async function syncMinecraftRoles(client: Client) {
 
         // 2. Fetch all valid Minecraft UUIDs from the server databases
         const planUsers = await dbRequest('SELECT uuid FROM plan_users');
-        const crystalCoreLinked = await dbRequest('SELECT uuid, web_user_id FROM linked_accounts');
+        const crystalCoreLinked = await dbRequest('SELECT minecraft_uuid, web_user_id FROM linked_accounts');
         
         const validUuids = new Set((planUsers as any[]).map(u => u.uuid));
         const crystalCoreUuidMap = new Map<string, string>(); // web_user_id -> minecraft_uuid
         (crystalCoreLinked as any[]).forEach(row => {
-            validUuids.add(row.uuid);
-            if (row.web_user_id) crystalCoreUuidMap.set(row.web_user_id, row.uuid);
+            const mcUuid = row.minecraft_uuid;
+            if (mcUuid) validUuids.add(mcUuid);
+            if (row.web_user_id && mcUuid) crystalCoreUuidMap.set(row.web_user_id, mcUuid);
         });
 
         // Create a map for quick lookup: Discord ID -> Linked Minecraft UUID
