@@ -4,9 +4,9 @@
   "main": "src/index.ts",
   "description": "Bot oficial para la integración entre Discord, Minecraft y Web de CrystalTides SMP.",
   "scripts": {
-    "start": "bun src/index.ts",
-    "dev": "bun --watch src/index.ts",
-    "deploy": "bun src/deploy-commands.ts"
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "deploy": "tsx src/deploy-commands.ts"
   },
   "dependencies": {
     "discord.js": "^14.16.3",

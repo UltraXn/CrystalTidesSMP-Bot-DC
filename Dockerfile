@@ -34,4 +34,5 @@ COPY . .
 WORKDIR /app/apps/discord-bot
 
 # Start via Bun directly (no build step needed for TS!)
+USER bun
 CMD ["bun", "src/index.ts"]

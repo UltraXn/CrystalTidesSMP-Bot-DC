@@ -39,76 +39,85 @@ import { initDb } from './config/mysql';
 import { syncMinecraftRoles } from './services/syncService';
 import { initGameLogWatcher } from './services/gameLogWatcher';
 
+const API_PORT = process.env.PORT || process.env.BOT_API_PORT || 3002;
+Bun.serve({
+    port: API_PORT,
+    async fetch(req: Request) {
+        const url = new URL(req.url);
+
+        // CORS Headers
+        const headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Content-Type': 'application/json'
+        };
+
+        // Security Check: Bearer Token
+        const authHeader = req.headers.get('Authorization');
+        const API_KEY = process.env.BOT_API_KEY;
+        
+        if (!API_KEY) {
+            console.error('CRITICAL: BOT_API_KEY is not set in environment!');
+            return new Response(JSON.stringify({ error: "Server Configuration Error" }), { status: 500, headers });
+        }
+
+        if (authHeader !== `Bearer ${API_KEY}`) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+        }
+
+        // Handle Preflight
+        if (req.method === 'OPTIONS') {
+            return new Response(null, { headers });
+        }
+
+        if (url.pathname === '/presence') {
+            const ids = url.searchParams.get('ids')?.split(',') || [];
+            const results: Record<string, string> = {};
+            
+            for (const guild of client.guilds.cache.values()) {
+                for (const id of ids) {
+                    let member = guild.members.cache.get(id);
+                    if (!member || !member.presence) {
+                        try {
+                            member = await guild.members.fetch({ user: id, withPresences: true });
+                        } catch {}
+                    }
+
+                    if (member && member.presence) {
+                        const status = member.presence.status;
+                        if (!results[id] || (status === 'online') || (status === 'dnd' && results[id] !== 'online')) {
+                            results[id] = status;
+                        }
+                    }
+                }
+            }
+            
+            return new Response(JSON.stringify(results), { headers });
+        }
+
+        if (url.pathname === '/log' && req.method === 'POST') {
+            try {
+                const body = await req.json();
+                const { title, message, level } = body;
+                await Logger.log(title || 'System Log', message || 'No content', level || 'info');
+                return new Response(JSON.stringify({ success: true }), { headers });
+            } catch (e) {
+                console.error('Error processing log request:', e);
+                return new Response("Bad Request", { status: 400, headers });
+            }
+        }
+
+        return new Response("Not Found", { status: 404, headers });
+    }
+});
+console.log(`Bot Internal API running on port ${API_PORT}`);
+
 client.once('ready', async () => {
     await initDb();
     initGameLogWatcher();
     console.log(`Loggueado como ${client.user?.tag}!`);
     
-    // Internal API to check presence
-    const API_PORT = process.env.PORT || process.env.BOT_API_PORT || 3002;
-    Bun.serve({
-        port: API_PORT,
-        async fetch(req: Request) {
-            const url = new URL(req.url);
-
-            // CORS Headers
-            const headers = {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Content-Type': 'application/json'
-            };
-
-            // Handle Preflight
-            if (req.method === 'OPTIONS') {
-                return new Response(null, { headers });
-            }
-
-            if (url.pathname === '/presence') {
-                const ids = url.searchParams.get('ids')?.split(',') || [];
-                // console.log(`[API] Presence check requested for: ${ids.join(',')}`); // Commented out to reduce spam
-                const results: Record<string, string> = {};
-                
-                // Check all known guilds cache
-                for (const guild of client.guilds.cache.values()) {
-                    for (const id of ids) {
-                        let member = guild.members.cache.get(id);
-                        if (!member || !member.presence) {
-                            try {
-                                member = await guild.members.fetch({ user: id, withPresences: true });
-                            } catch {}
-                        }
-
-                        if (member && member.presence) {
-                            // Prioritize 'online' > 'dnd' > 'idle' > 'offline'
-                            const status = member.presence.status;
-                            if (!results[id] || (status === 'online') || (status === 'dnd' && results[id] !== 'online')) {
-                                results[id] = status;
-                            }
-                        }
-                    }
-                }
-                
-                return new Response(JSON.stringify(results), { headers });
-            }
-
-            if (url.pathname === '/log' && req.method === 'POST') {
-                try {
-                    const body = await req.json();
-                    const { title, message, level } = body;
-                    await Logger.log(title || 'System Log', message || 'No content', level || 'info');
-                    return new Response(JSON.stringify({ success: true }), { headers });
-                } catch (e) {
-                    console.error('Error processing log request:', e);
-                    return new Response("Bad Request", { status: 400, headers });
-                }
-            }
-
-            return new Response("Not Found", { status: 404, headers });
-        }
-    });
-    console.log(`Bot Internal API running on port ${API_PORT}`);
-
     // Initial sync
     syncMinecraftRoles(client);
     Logger.log('Bot Started', `CrystalBot v2.0 is now online using Bun!\nAPI Port: ${API_PORT}`, 'success');
@@ -116,6 +125,7 @@ client.once('ready', async () => {
     // Sync every 30 minutes
     setInterval(() => syncMinecraftRoles(client), 30 * 60 * 1000);
 });
+
 
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
