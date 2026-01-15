@@ -9,12 +9,12 @@
     "deploy": "tsx src/deploy-commands.ts"
   },
   "dependencies": {
-    "discord.js": "^14.16.3",
-    "@supabase/supabase-js": "^2.87.1",
-    "mysql2": "^3.15.3",
-    "@crystaltides/shared": "*"
+    "discord.js": "^14.17.3",
+    "@supabase/supabase-js": "^2.47.10",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "bun-types": "latest"
   }
 }
+```

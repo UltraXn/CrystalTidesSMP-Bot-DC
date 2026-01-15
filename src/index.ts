@@ -1,3 +1,4 @@
+import 'dotenv/config';
 // Bun loads .env automatically, no need for dotenv
 import { Client, Collection, GatewayIntentBits, REST, Routes } from 'discord.js';
 import fs from 'fs';
@@ -114,7 +115,6 @@ Bun.serve({
 console.log(`Bot Internal API running on port ${API_PORT}`);
 
 client.once('ready', async () => {
-    await initDb();
     initGameLogWatcher();
     console.log(`Loggueado como ${client.user?.tag}!`);
     

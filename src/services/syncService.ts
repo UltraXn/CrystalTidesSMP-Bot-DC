@@ -1,6 +1,5 @@
 import { Client, GuildMember } from 'discord.js';
 import { supabase } from '../config/supabase';
-import { dbRequest } from '../config/mysql';
 import { Logger } from './logger';
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
@@ -24,49 +23,31 @@ export async function syncMinecraftRoles(client: Client) {
             return;
         }
 
-        // 1. Fetch all users from Supabase with linked accounts
-        const { data: { users }, error } = await supabase.auth.admin.listUsers();
-        if (error) throw error;
-
-        // 2. Fetch all valid Minecraft UUIDs from the server databases
-        const planUsers = await dbRequest('SELECT uuid FROM plan_users');
-        const crystalCoreLinked = await dbRequest('SELECT minecraft_uuid, web_user_id FROM linked_accounts');
-        
-        const validUuids = new Set((planUsers as any[]).map(u => u.uuid));
-        const crystalCoreUuidMap = new Map<string, string>(); // web_user_id -> minecraft_uuid
-        (crystalCoreLinked as any[]).forEach(row => {
-            const mcUuid = row.minecraft_uuid;
-            if (mcUuid) validUuids.add(mcUuid);
-            if (row.web_user_id && mcUuid) crystalCoreUuidMap.set(row.web_user_id, mcUuid);
-        });
+        // 1. Fetch all users from profiles table in Supabase
+        const { data: profiles, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, minecraft_uuid, social_discord');
+            
+        if (profileError) throw profileError;
 
         // Create a map for quick lookup: Discord ID -> Linked Minecraft UUID
         const linkedMap = new Map<string, string>();
-        for (const user of users) {
-             const metadata = user.user_metadata || {};
-             
-             // Extract Discord ID (Support both OAuth and manual linking)
-             const discordId = metadata.discord?.id 
-                || (metadata.iss?.includes('discord') ? metadata.sub : null)
-                || metadata.provider_id 
-                || metadata.social_discord_id
-                || (user.identities?.find(i => i.provider === 'discord')?.id);
-             
-             // Extract Minecraft UUID
-             const mcUuid = metadata.minecraft_uuid || crystalCoreUuidMap.get(user.id);
+        for (const profile of profiles) {
+             const discordId = profile.social_discord;
+             const mcUuid = profile.minecraft_uuid;
              
              if (discordId && mcUuid) {
                  linkedMap.set(discordId, mcUuid);
              }
         }
 
-        // 3. Fetch members who have the FILTER role
+        // 2. Fetch members who have the FILTER role
         const members = await guild.members.fetch();
         const targetMembers = members.filter(m => m.roles.cache.has(ROLE_FILTER_ID));
 
         for (const [_, member] of targetMembers) {
-            const mcUuid = linkedMap.get(member.id);
-            const isVerified = mcUuid && validUuids.has(mcUuid);
+            // A user is considered VERIFIED if they have a linked Minecraft UUID in the profiles table
+            const isVerified = linkedMap.has(member.id);
 
             if (isVerified) {
                 if (!member.roles.cache.has(ROLE_VERIFIED_ID)) {
