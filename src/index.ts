@@ -36,7 +36,6 @@ if (fs.existsSync(commandsPath)) {
 }
 
 import { Logger } from './services/logger';
-import { initDb } from './config/mysql';
 import { syncMinecraftRoles } from './services/syncService';
 import { initGameLogWatcher } from './services/gameLogWatcher';
 
