@@ -26,18 +26,27 @@ export async function syncMinecraftRoles(client: Client) {
         // 1. Fetch all users from profiles table in Supabase
         const { data: profiles, error: profileError } = await supabase
             .from('profiles')
-            .select('id, minecraft_uuid, social_discord');
+            .select('id, minecraft_uuid, social_discord, discord_tag');
             
         if (profileError) throw profileError;
 
-        // Create a map for quick lookup: Discord ID -> Linked Minecraft UUID
-        const linkedMap = new Map<string, string>();
-        for (const profile of profiles) {
+        // Create lookups for quick verification
+        const idMap = new Map<string, string>(); // Discord ID -> Minecraft UUID
+        const tagMap = new Map<string, string>(); // Discord Tag -> Minecraft UUID
+
+        for (const profile of profiles || []) {
              const discordId = profile.social_discord;
+             const discordTag = profile.discord_tag;
              const mcUuid = profile.minecraft_uuid;
              
-             if (discordId && mcUuid) {
-                 linkedMap.set(discordId, mcUuid);
+             if (mcUuid) {
+                 if (discordId) idMap.set(discordId, mcUuid);
+                 if (discordTag) tagMap.set(discordTag.toLowerCase(), mcUuid);
+                 
+                 // Fallback: Sometimes social_discord contains the tag instead of the ID
+                 if (discordId && isNaN(Number(discordId))) {
+                     tagMap.set(discordId.toLowerCase(), mcUuid);
+                 }
              }
         }
 
@@ -46,8 +55,12 @@ export async function syncMinecraftRoles(client: Client) {
         const targetMembers = members.filter(m => m.roles.cache.has(ROLE_FILTER_ID));
 
         for (const [_, member] of targetMembers) {
-            // A user is considered VERIFIED if they have a linked Minecraft UUID in the profiles table
-            const isVerified = linkedMap.has(member.id);
+            // A user is VERIFIED if their ID or Tag exists in our link maps
+            const hasIdLink = idMap.has(member.id);
+            const hasTagLink = tagMap.has(member.user.tag.toLowerCase()) || 
+                              tagMap.has(member.user.username.toLowerCase());
+
+            const isVerified = hasIdLink || hasTagLink;
 
             if (isVerified) {
                 if (!member.roles.cache.has(ROLE_VERIFIED_ID)) {
