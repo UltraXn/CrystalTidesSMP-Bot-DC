@@ -23,18 +23,43 @@ export async function syncMinecraftRoles(client: Client) {
             return;
         }
 
-        // 1. Fetch all users from profiles table in Supabase
-        const { data: profiles, error: profileError } = await supabase
-            .from('profiles')
-            .select('id, minecraft_uuid, social_discord, discord_tag');
-            
-        if (profileError) throw profileError;
+        // 1. Fetch all data needed for verification
+        const [profileRes, authRes] = await Promise.all([
+            supabase.from('profiles').select('id, minecraft_uuid, social_discord, discord_tag'),
+            supabase.auth.admin.listUsers()
+        ]);
+
+        if (profileRes.error) throw profileRes.error;
+        if (authRes.error) throw authRes.error;
+
+        const profiles = profileRes.data || [];
+        const authUsers = authRes.data.users || [];
 
         // Create lookups for quick verification
         const idMap = new Map<string, string>(); // Discord ID -> Minecraft UUID
         const tagMap = new Map<string, string>(); // Discord Tag -> Minecraft UUID
 
-        for (const profile of profiles || []) {
+        // Create a quick profile lookup by user UUID
+        const profileByUuid = new Map<string, any>();
+        for (const p of profiles) {
+            profileByUuid.set(p.id, p);
+        }
+
+        // Process Auth Users (Social Login Identities)
+        for (const user of authUsers) {
+            const discordIdentity = user.identities?.find(i => i.provider === 'discord');
+            const profile = profileByUuid.get(user.id);
+            
+            if (discordIdentity && profile?.minecraft_uuid) {
+                idMap.set(discordIdentity.id, profile.minecraft_uuid);
+                // Also store the tag if available in identity metadata
+                const tag = discordIdentity.identity_data?.full_name || discordIdentity.identity_data?.custom_claims?.global_name;
+                if (tag) tagMap.set(tag.toLowerCase(), profile.minecraft_uuid);
+            }
+        }
+
+        // Process Manual Profile Links (Overrides/Fallbacks)
+        for (const profile of profiles) {
              const discordId = profile.social_discord;
              const discordTag = profile.discord_tag;
              const mcUuid = profile.minecraft_uuid;
