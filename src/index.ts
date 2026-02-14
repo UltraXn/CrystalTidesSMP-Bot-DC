@@ -166,4 +166,16 @@ client.on('messageCreate', async message => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// DEBUG: Check Token
+const token = process.env.DISCORD_TOKEN;
+if (token) {
+    console.log(`Token Length: ${token.length}`);
+    console.log(`Token Start: ${token.substring(0, 5)}...`);
+    console.log(`Token End: ...${token.substring(token.length - 5)}`);
+    console.log(`Token ASCII Start: ${token.charCodeAt(0)}`);
+    console.log(`Token ASCII End: ${token.charCodeAt(token.length - 1)}`);
+} else {
+    console.error('CRITICAL: DISCORD_TOKEN is missing or empty!');
+}
+
+client.login(token);
