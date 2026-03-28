@@ -1,64 +1,99 @@
-# 🤖 Bot de Discord CrystalTides
+# 🤖 CrystalTides Discord Bot
 
-Bot oficial de Discord para el ecosistema **CrystalTides SMP**. Conecta la comunidad de Discord con el servidor de Minecraft y la plataforma web.
+> **The community bridge between Discord and the CrystalTides universe.**
 
-## ✨ Características
+![CrystalTides Discord Banner](https://raw.githubusercontent.com/CrystalTides/art/main/discord-bot-banner.png)
 
-- **Vinculación de Cuentas**: Conecta cuentas de Discord con perfiles de Minecraft/Web usando `/link`.
-- **Sincronización de Roles**: Sincroniza automáticamente rangos del juego (VIP, Staff) con roles de Discord.
-- **Monitoreo del Servidor**: Actualizaciones en tiempo real del estado del servidor de Minecraft.
-- **Tickets de Soporte**: Integración con el sistema de tickets web (Planeado).
+## 💎 Overview
 
-## 🛠️ Comandos
+El **CrystalTides Discord Bot** es el eje social y de vinculación del ecosistema. Construido con **Discord.js** y ejecutado sobre el runtime de **Bun**, este bot gestiona la identidad de los jugadores a través de múltiples plataformas, automatiza la moderación y proporciona herramientas de consulta rápida para la comunidad.
 
-| Comando          | Descripción                                                                              |
-| ---------------- | ---------------------------------------------------------------------------------------- |
-| `/link [codigo]` | Vincula tu cuenta de Discord a tu perfil de CrystalTides usando un código del panel web. |
-| `/ping`          | Verifica la latencia y salud del bot.                                                    |
+---
 
-## 🚀 Configuración y Desarrollo
+## 🌟 Core Features
 
-Este bot está construido con **Discord.js** y corre sobre **Bun**.
+- 🔗 **Account Linking**: Flujo automatizado de vinculación `/link` (Discord <-> Minecraft <-> Web).
+- 📢 **Live Notifications**: Anuncios en tiempo real de eventos del servidor y actualizaciones.
+- 🛠️ **Staff Utilities**: Herramientas integradas para moderación y gestión de tickets.
+- 📊 **Server Status**: Comandos para consultar el estado del servidor, jugadores online y estadísticas.
+- ⚡ **High Performance**: Optimizado para baja latencia usando **Bun** como motor de ejecución.
 
-### Prerrequisitos
+---
 
-- Runtime [Bun](https://bun.sh/).
-- Una Aplicación de Discord con scopes "Bot" y "applications.commands".
+## 🏗️ Architecture Role
 
-### Instalación
+El bot actúa como un cliente de orquestación social, comunicándose con el stack web y (bajo demanda) con el entorno de juego:
 
-```bash
-# Instalar dependencias
-bun install
+```mermaid
+graph TD
+    subgraph "Discord Environment"
+        D[Discord API] <--> DB[CrystalTides Bot]
+    end
+
+    subgraph "Cloud Services (GCP)"
+        DB -->|Metadata / Auth| SB[Supabase]
+        DB -->|Game Logic| WS[Web Server]
+    end
+
+    subgraph "Bare Metal Game Environment"
+        DB -. Private Overlay .-> SQL[(MariaDB / MySQL)]
+        WS <--> SQL
+    end
+
+    User[Usuario] <--> D
 ```
 
-### Variables de Entorno (.env)
+> [!TIP]
+> **Estrategia de Evolución**: Estamos migrando toda la lógica directa de base de datos (`SQL`) hacia el `web-server` para centralizar la seguridad y el rendimiento.
 
-Crea un archivo `.env` en este directorio:
+---
 
-```env
-DISCORD_TOKEN=tu_token_del_bot
-DISCORD_CLIENT_ID=tu_client_id
-DISCORD_GUILD_ID=tu_guild_id
+## 🛠️ Tech Stack
 
-# Supabase (para conexión a base de datos)
-SUPABASE_URL=...
-SUPABASE_SERVICE_ROLE_KEY=...
+| Componente | Tecnología | Propósito |
+| :--- | :--- | :--- |
+| **Engine** | [Bun](https://bun.sh) | Runtime de alto rendimiento para JS/TS |
+| **Library** | [Discord.js](https://discord.js.org) | Interacción con la API de Discord |
+| **Logic** | TypeScript | Robustez y escalabilidad del código |
+| **Backend** | Supabase & Web Server | Fuentes de verdad y lógica de negocio |
 
-# MySQL (para datos avanzados del juego)
-DB_HOST=...
-DB_USER=...
-```
+---
 
-### Ejecución
+## 🚀 Desarrollo & Despliegue
 
-```bash
-# Modo desarrollo (watch)
-bun dev
+### 🛠️ Entorno Local
 
-# Desplegar comandos slash (ejecutar una vez cuando cambien los comandos)
-bun deploy
+1.  **Instalar dependencias:**
+    ```bash
+    bun install
+    ```
+2.  **Correr en desarrollo:**
+    ```bash
+    bun run src/index.ts
+    ```
+3.  **Registro de comandos:**
+    ```bash
+    bun run src/deploy-commands.ts
+    ```
 
-# Inicio en producción
-bun start
-```
+### 🔐 Configuración (.env)
+
+| Variable | Descripción |
+| :--- | :--- |
+| `DISCORD_TOKEN` | Token secreto del bot desde el portal de Discord |
+| `DISCORD_CLIENT_ID` | ID de aplicación del bot |
+| `DISCORD_GUILD_ID` | ID del servidor principal (para comandos de testeo) |
+| `API_BASE_URL` | Endpoint del Web Server de CrystalTides |
+
+---
+
+## 🗺️ Future Roadmap
+
+- [ ] **Interactive Status Embeds**: Mensajes dinámicos que se actualizan cada minuto con el estado del servidor.
+- [ ] **SpacetimeDB Integration**: Suscripción a eventos globales para notificaciones instantáneas de muertes, logros o eventos.
+- [ ] **AI-Powered Support**: Integración con un modelo de IA para responder dudas básicas de los jugadores.
+
+---
+
+> [!NOTE]
+> Este bot es parte del ecosistema oficial de **CrystalTides**. Cualquier contribución debe alinearse con las [Guías Generales del Proyecto](../../projects/README.md).

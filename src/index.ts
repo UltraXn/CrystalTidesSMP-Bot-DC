@@ -38,6 +38,8 @@ if (fs.existsSync(commandsPath)) {
 import { Logger } from './services/logger';
 import { syncMinecraftRoles } from './services/syncService';
 import { initGameLogWatcher } from './services/gameLogWatcher';
+import { PelicanService } from './services/pelicanService';
+import { WOLService } from './services/wolService';
 
 const API_PORT = process.env.PORT || process.env.BOT_API_PORT || 3002;
 import http from 'http';
@@ -145,16 +147,41 @@ client.once('ready', async () => {
 
 
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
 
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        await interaction.reply({ content: 'Hubo un error al ejecutar el comando.', ephemeral: true });
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            await interaction.reply({ content: 'Hubo un error al ejecutar el comando.', ephemeral: true });
+        }
+    } else if (interaction.isButton()) {
+        try {
+            await interaction.deferUpdate();
+            
+            switch (interaction.customId) {
+                case 'wol_pc':
+                    const wolSuccess = await WOLService.wakePC();
+                    await interaction.followUp({ content: wolSuccess ? '✅ Magic Packet enviado con éxito!' : '❌ Error al enviar WOL.', ephemeral: true });
+                    break;
+                case 'pelican_start':
+                    const startRes = await PelicanService.sendPowerAction('start');
+                    await interaction.followUp({ content: startRes ? '✅ Señal de INICIO enviada.' : '❌ Error al iniciar el servidor.', ephemeral: true });
+                    break;
+                case 'pelican_restart':
+                    const restartRes = await PelicanService.sendPowerAction('restart');
+                    await interaction.followUp({ content: restartRes ? '✅ Señal de REINICIO enviada.' : '❌ Error al reiniciar el servidor.', ephemeral: true });
+                    break;
+                case 'pelican_stop':
+                    const stopRes = await PelicanService.sendPowerAction('stop');
+                    await interaction.followUp({ content: stopRes ? '✅ Señal de APAGADO enviada.' : '❌ Error al detener el servidor.', ephemeral: true });
+                    break;
+            }
+        } catch (error) {
+            console.error('Button interaction error:', error);
+        }
     }
 });
 
@@ -166,16 +193,4 @@ client.on('messageCreate', async message => {
     }
 });
 
-// DEBUG: Check Token
-const token = process.env.DISCORD_TOKEN;
-if (token) {
-    console.log(`Token Length: ${token.length}`);
-    console.log(`Token Start: ${token.substring(0, 5)}...`);
-    console.log(`Token End: ...${token.substring(token.length - 5)}`);
-    console.log(`Token ASCII Start: ${token.charCodeAt(0)}`);
-    console.log(`Token ASCII End: ${token.charCodeAt(token.length - 1)}`);
-} else {
-    console.error('CRITICAL: DISCORD_TOKEN is missing or empty!');
-}
-
-client.login(token);
+client.login(process.env.DISCORD_TOKEN);

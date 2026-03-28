@@ -1,38 +1,22 @@
-# Base Image
-FROM oven/bun:1 AS base
-WORKDIR /app
+# Dockerfile simplificado para Discord-Bot
+FROM node:22-alpine
 
-# Install dependencies into temp cache
-# This layer caches dependencies if package.json doesn't change
-FROM base AS install
-RUN mkdir -p /temp/dev
-COPY package.json /temp/dev/
-COPY apps/discord-bot/package.json /temp/dev/apps/discord-bot/
-COPY packages/shared/package.json /temp/dev/packages/shared/
-COPY packages/eslint-config/package.json /temp/dev/packages/eslint-config/
-
-# We only need the bot dependencies
-WORKDIR /temp/dev/apps/discord-bot
-# Bun treats workspaces differently in Docker, simplest is to copy all dependency declarations
-# and install. But for now, let's try a simpler approach since we are isolated.
-# Actually, since it's a monorepo, we might need the root lockfile.
-# Let's clean copy relevant files.
+RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
-COPY package.json bun.lockb* ./
-COPY apps/discord-bot/package.json ./apps/discord-bot/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
 
-# Install
-RUN bun install
+# Copiar bases para dependencias
+COPY package*.json ./
+COPY apps/discord-bot/package*.json ./apps/discord-bot/
+COPY packages/shared/package*.json ./packages/shared/
 
-# Production build/prune stage is less critical for simple bot, 
-# let's just copy source and run.
-COPY . .
+# Instalar dependencias
+RUN npm ci --omit=dev
 
-WORKDIR /app/apps/discord-bot
+# Copiar código fuente (el bot corre con tsx directo)
+COPY apps/discord-bot/src ./apps/discord-bot/src
 
-# Start via Bun directly (no build step needed for TS!)
-USER bun
-CMD ["bun", "src/index.ts"]
+EXPOSE 3002
+ENV NODE_ENV=production
+
+CMD ["npx", "tsx", "apps/discord-bot/src/index.ts"]
