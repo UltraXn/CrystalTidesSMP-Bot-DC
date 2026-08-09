@@ -1,10 +1,11 @@
 # syntax=docker/dockerfile:1.7
-# Ultra-fast runner: receives pre-built dist from CI runner.
+# Debian (glibc) runner for native @napi-rs/canvas arm64 support
 
-FROM node:24-alpine
+FROM node:24-slim
 WORKDIR /app
-RUN apk add --no-cache libc6-compat curl openssh-client \
-  && addgroup -g 1001 app && adduser -u 1001 -S -G app app
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates openssh-client \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd -g 1001 app && useradd -u 1001 -g app -s /bin/sh app
 
 ENV NODE_ENV=production
 ENV PORT=3002
