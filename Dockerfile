@@ -3,7 +3,7 @@
 
 FROM node:24-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates openssh-client \
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates openssh-client fonts-dejavu-core fontconfig \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd -g 1001 app && useradd -u 1001 -g app -s /bin/sh -d /home/app app \
   && mkdir -p /home/app && chown app:app /home/app
