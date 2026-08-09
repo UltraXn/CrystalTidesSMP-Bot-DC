@@ -124,7 +124,7 @@ export class PowerManager {
                     const msg = await channel.messages.fetch(this.controlMessageId);
                     return msg;
                 }
-            } catch (err) {
+            } catch {
                 // Message was deleted — clear cache
                 this.controlChannelId = null;
                 this.controlMessageId = null;
@@ -151,7 +151,7 @@ export class PowerManager {
                                 this.controlMessageId = controlMsg.id;
                                 return controlMsg;
                             }
-                        } catch (err) {
+                        } catch {
                             // Ignored per-channel fetch errors
                         }
                     }
