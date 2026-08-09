@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Pre-built runner: CI ships dist + node_modules (x64), we swap in the ARM64 native binary here.
+# Pre-built runner: CI ships dist + ARM64 native binaries in node_modules
 
 FROM node:24-slim
 WORKDIR /app
@@ -17,10 +17,6 @@ COPY --chown=app:app apps/discord-bot/dist ./apps/discord-bot/dist
 COPY --chown=app:app apps/discord-bot/package.json ./apps/discord-bot/package.json
 COPY --chown=app:app packages/shared/dist ./packages/shared/dist
 COPY --chown=app:app packages/shared/package.json ./packages/shared/package.json
-
-# Replace the x64 native canvas binary with the ARM64 gnu one (VPS is Oracle ARM64)
-RUN npm install --no-save --legacy-peer-deps @napi-rs/canvas-linux-arm64-gnu \
-  && rm -rf /root/.npm
 
 USER app
 EXPOSE 3002
