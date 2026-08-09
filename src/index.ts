@@ -33,7 +33,7 @@ const client = new Client({
         GatewayIntentBits.GuildPresences
     ],
     rest: {
-        timeout: 30000
+        timeout: 60_000
     }
 });
 

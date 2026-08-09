@@ -47,23 +47,34 @@ export default {
                 return;
             }
 
-            try {
-                const cardBuffer = await CardCanvasService.renderCardBuffer({
-                    state: 'running',
-                    serverHost: process.env.MC_DISPLAY_HOST || 'dev.crystaltidessmp.net',
-                    serverPort: Number.parseInt(process.env.MC_SERVER_PORT || '25565', 10),
-                    onlinePlayers: 0,
-                    maxPlayers: 20,
-                    ramUsedMB: 4600,
-                    ramTotalMB: 12288
-                });
-                const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
-                embed.setImage('attachment://dashboard.png');
+            let sentWithCanvas = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const cardBuffer = await CardCanvasService.renderCardBuffer({
+                        state: 'running',
+                        serverHost: process.env.MC_DISPLAY_HOST || 'dev.crystaltidessmp.net',
+                        serverPort: Number.parseInt(process.env.MC_SERVER_PORT || '25565', 10),
+                        onlinePlayers: 0,
+                        maxPlayers: 20,
+                        ramUsedMB: 4600,
+                        ramTotalMB: 12288
+                    });
+                    const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
+                    embed.setImage('attachment://dashboard.png');
 
-                const sentMsg = await (channel as TextChannel).send({ embeds: [embed], files: [attachment], components: [row1, row2] });
-                PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
-            } catch (cardErr) {
-                console.error('[setupControl] Error sending canvas attachment on setup:', cardErr);
+                    const sentMsg = await (channel as TextChannel).send({ embeds: [embed], files: [attachment], components: [row1, row2] });
+                    PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
+                    sentWithCanvas = true;
+                    break;
+                } catch (cardErr) {
+                    console.error(`[setupControl] Canvas attachment attempt ${attempt}/3 failed:`, cardErr instanceof Error ? cardErr.message : String(cardErr));
+                    if (attempt < 3) {
+                        await new Promise(r => setTimeout(r, 2000 * attempt));
+                    }
+                }
+            }
+
+            if (!sentWithCanvas) {
                 const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
                 PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
             }

@@ -324,23 +324,37 @@ export class PowerManager {
             const shouldUploadCanvas = stateKey !== this.lastUploadedState || (Date.now() - this.lastUploadTimestamp > 120_000);
 
             if (shouldUploadCanvas) {
-                try {
-                    const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
-                    const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
-                    embed.setImage('attachment://dashboard.png');
-                    await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
-                    this.lastUploadedState = stateKey;
-                    this.lastUploadTimestamp = Date.now();
-                    console.log(`[PowerManager] Control embed updated with CANVAS (state: ${stateKey}).`);
-                } catch (canvasErr) {
-                    // Canvas upload failed (socket/timeout) — fall back to text-only update
-                    console.warn(`[PowerManager] Canvas upload failed, falling back to text-only:`, canvasErr instanceof Error ? canvasErr.message : String(canvasErr));
+                let canvasUploaded = false;
+                const maxRetries = 3;
+
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
+                        const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
+                        embed.setImage('attachment://dashboard.png');
+                        await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
+                        this.lastUploadedState = stateKey;
+                        this.lastUploadTimestamp = Date.now();
+                        console.log(`[PowerManager] Control embed updated with CANVAS (state: ${stateKey}, attempt: ${attempt}).`);
+                        canvasUploaded = true;
+                        break;
+                    } catch (canvasErr) {
+                        const errMsg = canvasErr instanceof Error ? canvasErr.message : String(canvasErr);
+                        console.warn(`[PowerManager] Canvas upload attempt ${attempt}/${maxRetries} failed: ${errMsg}`);
+                        if (attempt < maxRetries) {
+                            await new Promise(r => setTimeout(r, 2000 * attempt));
+                        }
+                    }
+                }
+
+                if (!canvasUploaded) {
+                    // All retries failed — fall back to text-only update
+                    console.warn(`[PowerManager] All ${maxRetries} canvas upload attempts failed, falling back to text-only.`);
                     const existingAttachment = controlMsg.attachments.first();
                     if (existingAttachment) {
                         embed.setImage(existingAttachment.url);
                     }
                     await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
-                    console.log(`[PowerManager] Control embed updated (text-only fallback).`);
                 }
             } else {
                 // No state change — just update text & buttons, keep existing image
@@ -349,7 +363,6 @@ export class PowerManager {
                     embed.setImage(existingAttachment.url);
                 }
                 await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
-                console.log(`[PowerManager] Control embed updated (text-only, no state change).`);
             }
         } catch (error) {
             console.error('[PowerManager] Error updating control embed:', error);
