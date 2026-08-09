@@ -115,20 +115,25 @@ export class PowerManager {
      * Falls back to a single-channel scan only on first boot (when IDs are unknown).
      */
     static async findControlMessage() {
+        console.log(`[PowerManager] findControlMessage called. cached channel: ${this.controlChannelId}, cached message: ${this.controlMessageId}`);
         // Fast path: use cached IDs
         if (this.controlChannelId && this.controlMessageId) {
             try {
                 const channel = await this.client.channels.fetch(this.controlChannelId) as TextChannel;
                 if (channel && 'messages' in channel) {
-                    return await channel.messages.fetch(this.controlMessageId);
+                    const msg = await channel.messages.fetch(this.controlMessageId);
+                    console.log(`[PowerManager] Fast path found control message (ID: ${msg.id})`);
+                    return msg;
                 }
-            } catch {
+            } catch (err) {
+                console.error(`[PowerManager] Fast path failed to fetch control message:`, err);
                 // Message was deleted — clear cache
                 this.controlChannelId = null;
                 this.controlMessageId = null;
             }
         }
 
+        console.log(`[PowerManager] Running slow path channel scan for control embed...`);
         // Slow path fallback: scan all channels once on startup
         for (const guild of this.client.guilds.cache.values()) {
             for (const channel of guild.channels.cache.values()) {
@@ -142,17 +147,19 @@ export class PowerManager {
                              m.embeds[0]?.title?.includes('Despertando') || m.embeds[0]?.title?.includes('Arrancando'))
                         );
                         if (controlMsg) {
+                            console.log(`[PowerManager] Slow path found control message in channel ${textChannel.name} (ID: ${controlMsg.id})`);
                             // Cache for future calls
                             this.controlChannelId = textChannel.id;
                             this.controlMessageId = controlMsg.id;
                             return controlMsg;
                         }
-                    } catch {
-                        /* ignore permission or channel errors */
+                    } catch (err) {
+                        console.warn(`[PowerManager] Could not read channel ${channel.id}: ${err instanceof Error ? err.message : String(err)}`);
                     }
                 }
             }
         }
+        console.log(`[PowerManager] No control embed message found on any channel.`);
         return null;
     }
 
@@ -160,8 +167,12 @@ export class PowerManager {
      * Updates the persistent control embed with the current state and renders a fresh Canvas PNG.
      */
     static async updateControlEmbed() {
+        console.log(`[PowerManager] updateControlEmbed called...`);
         const controlMsg = await this.findControlMessage();
-        if (!controlMsg) return;
+        if (!controlMsg) {
+            console.log(`[PowerManager] updateControlEmbed aborting: findControlMessage returned null.`);
+            return;
+        }
 
         try {
             const status = await PelicanService.getServerStatus();
