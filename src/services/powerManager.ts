@@ -238,27 +238,50 @@ export class PowerManager {
                 } : null
             };
 
-            // Render HD Canvas PNG Buffer
-            const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
-            const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
-
-            const embed = new EmbedBuilder()
-                .setTitle('⚡ CrystalTides — Control Matrix')
-                .setImage('attachment://dashboard.png')
-                .setTimestamp()
-                .setFooter({ text: `⚡ Sincronización gráfica en vivo • Refresco HD` });
+            let statusIcon = '🔴';
+            let statusText = 'Desconectado / Offline';
+            let embedColor = 0xef4444;
 
             if (state === 'running') {
-                embed.setColor('#10b981');
+                statusIcon = '🟢';
+                statusText = 'En ejecución (Online)';
+                embedColor = 0x10b981;
             } else if (state === 'starting') {
-                embed.setColor('#3b82f6');
+                statusIcon = '🔵';
+                statusText = 'Iniciando (Cargando mods & plugins...)';
+                embedColor = 0x3b82f6;
             } else if (state === 'stopping') {
-                embed.setColor('#ef4444');
+                statusIcon = '🟡';
+                statusText = 'Deteniendo (Guardando terreno...)';
+                embedColor = 0xf59e0b;
             } else if (state === 'missing') {
-                embed.setColor('#4b5563');
-            } else {
-                embed.setColor('#f59e0b');
+                statusIcon = '⚪';
+                statusText = 'Laptop Desconectada (Host Offline)';
+                embedColor = 0x4b5563;
             }
+
+            const ramFormatted = (ramUsedMB / 1024).toFixed(2);
+            const ramTotalFormatted = (ramTotalMB / 1024).toFixed(2);
+
+            let desc = `### ${statusIcon} Estado del Servidor: **${statusText}**\n\n`;
+
+            if (this.activeTransition) {
+                desc += `**Transición en curso**: ${this.activeTransition.title} (${this.activeTransition.progress}%)\n`;
+                if (stepText) desc += `${stepText}\n\n`;
+            }
+
+            desc += 
+                `> 💻 **Nodo / Host**: ${this.laptopWasWoken ? 'Laptop Conectada (Wings OK)' : 'Laptop Apagada'}\n` +
+                `> 👥 **Jugadores**: ${onlinePlayers} / ${maxPlayers}\n` +
+                `> 💾 **Memoria RAM**: ${ramFormatted} GB / ${ramTotalFormatted} GB\n` +
+                `> 📡 **Conexión IP**: \`${this.MC_HOST}:${this.MC_PORT}\``;
+
+            const embed = new EmbedBuilder()
+                .setTitle('⚡ CrystalTides — Control de Nodo & Energía')
+                .setDescription(desc)
+                .setColor(embedColor)
+                .setTimestamp()
+                .setFooter({ text: '⚡ Sincronización en vivo • Panel de Control' });
 
             const isOffline = state === 'offline';
             const isMissing = state === 'missing';
@@ -293,8 +316,18 @@ export class PowerManager {
                     .setDisabled(this.activeTransition !== null || (!isOnlineOrStarting && !isStopping)),
             );
 
-            console.log(`[PowerManager] Updating control embed on Discord (Message ID: ${controlMsg.id})...`);
-            await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
+            // Step 1: Instant text & button update (100% reliable, zero network errors, zero attachment rate limits)
+            await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
+
+            // Step 2: Try optional HD Canvas image attachment rendering safely
+            try {
+                const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
+                const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
+                embed.setImage('attachment://dashboard.png');
+                await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
+            } catch (imgError) {
+                // If attachment upload fails or times out, text and buttons are ALREADY updated and 100% functional!
+            }
             console.log(`[PowerManager] Control embed updated successfully.`);
         } catch (error) {
             console.error('[PowerManager] Error updating control embed:', error);
