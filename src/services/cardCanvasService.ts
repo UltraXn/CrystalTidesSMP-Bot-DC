@@ -136,7 +136,7 @@ export class CardCanvasService {
             let lineY = cardY + 225;
             for (const line of lines) {
                 // Strip emoji prefixes from transition steps for clean rendering
-                const cleanLine = line.replace(/^[>\s]*[🟢⚪🟡🔴]\s*/, '> ');
+                const cleanLine = line.replace(/^[>\s]*[🟢⚪🟡🔴]\s*/u, '> ');
                 ctx.fillText(cleanLine, cardX + 35, lineY);
                 lineY += 28;
             }
