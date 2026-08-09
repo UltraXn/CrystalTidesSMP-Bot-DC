@@ -319,15 +319,38 @@ export class PowerManager {
                     .setDisabled(this.activeTransition !== null || (!isOnlineOrStarting && !isStopping)),
             );
 
-            const existingAttachment = controlMsg.attachments.first();
-            if (existingAttachment) {
-                embed.setImage(existingAttachment.url);
-            } else {
-                embed.setImage(null);
-            }
+            // Smart Canvas: only re-upload image when state actually changes (avoids Discord socket flood)
+            const stateKey = `${state}_${this.activeTransition?.action || 'none'}_${this.activeTransition?.step || 0}`;
+            const shouldUploadCanvas = stateKey !== this.lastUploadedState || (Date.now() - this.lastUploadTimestamp > 120_000);
 
-            await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
-            console.log(`[PowerManager] Control embed updated successfully.`);
+            if (shouldUploadCanvas) {
+                try {
+                    const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
+                    const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
+                    embed.setImage('attachment://dashboard.png');
+                    await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
+                    this.lastUploadedState = stateKey;
+                    this.lastUploadTimestamp = Date.now();
+                    console.log(`[PowerManager] Control embed updated with CANVAS (state: ${stateKey}).`);
+                } catch (canvasErr) {
+                    // Canvas upload failed (socket/timeout) — fall back to text-only update
+                    console.warn(`[PowerManager] Canvas upload failed, falling back to text-only:`, canvasErr instanceof Error ? canvasErr.message : String(canvasErr));
+                    const existingAttachment = controlMsg.attachments.first();
+                    if (existingAttachment) {
+                        embed.setImage(existingAttachment.url);
+                    }
+                    await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
+                    console.log(`[PowerManager] Control embed updated (text-only fallback).`);
+                }
+            } else {
+                // No state change — just update text & buttons, keep existing image
+                const existingAttachment = controlMsg.attachments.first();
+                if (existingAttachment) {
+                    embed.setImage(existingAttachment.url);
+                }
+                await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
+                console.log(`[PowerManager] Control embed updated (text-only, no state change).`);
+            }
         } catch (error) {
             console.error('[PowerManager] Error updating control embed:', error);
         }
