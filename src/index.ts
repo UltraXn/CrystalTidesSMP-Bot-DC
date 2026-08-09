@@ -3,7 +3,6 @@ import { Client, Collection, GatewayIntentBits, Interaction, TextChannel, Button
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { LiveStatusService } from './services/liveStatusService';
 import { ChatBridgeService } from './services/chatBridgeService';
 import { Logger } from './services/logger';
 import { syncMinecraftRoles } from './services/syncService';
@@ -250,7 +249,6 @@ client.once('ready', async () => {
     syncMinecraftRoles(client);
     Logger.log('Bot Started', `CrystalBot v2.0 is now online!\nAPI Port: ${API_PORT}`, 'success');
 
-    LiveStatusService.init(client);
     ChatBridgeService.init(client);
     PowerManager.init(client);
 
