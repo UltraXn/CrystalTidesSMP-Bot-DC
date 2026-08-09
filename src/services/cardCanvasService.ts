@@ -36,24 +36,24 @@ export class CardCanvasService {
         // 1. Color Palettes
         let accentColor = '#10b981'; // Emerald Green
         let accentGlow = 'rgba(16, 185, 129, 0.25)';
-        let statusBadgeText = '🟢 SERVIDORES EN LÍNEA';
+        let statusBadgeText = 'SERVIDORES EN LÍNEA';
 
         if (isStarting) {
             accentColor = '#3b82f6'; // Sapphire Blue
             accentGlow = 'rgba(59, 130, 246, 0.25)';
-            statusBadgeText = '🟡 INICIANDO MOTOR & MODS';
+            statusBadgeText = 'INICIANDO MOTOR & MODS';
         } else if (state === 'stopping') {
             accentColor = '#ef4444'; // Red
             accentGlow = 'rgba(239, 68, 68, 0.25)';
-            statusBadgeText = '🔴 APAGANDO Y GUARDANDO';
+            statusBadgeText = 'APAGANDO Y GUARDANDO';
         } else if (isMissing) {
             accentColor = '#6b7280'; // Gray
             accentGlow = 'rgba(107, 114, 128, 0.15)';
-            statusBadgeText = '🔴 LAPTOP SUSPENDIDA / WOL REQUERIDO';
+            statusBadgeText = 'LAPTOP SUSPENDIDA (WOL)';
         } else if (state === 'offline') {
             accentColor = '#f59e0b'; // Amber Gold
             accentGlow = 'rgba(245, 158, 11, 0.25)';
-            statusBadgeText = '🟡 NODO LISTO (SERVER DETENIDO)';
+            statusBadgeText = 'NODO LISTO (SERVER DETENIDO)';
         }
 
         // 2. Base Dark Gradient Background
@@ -87,20 +87,20 @@ export class CardCanvasService {
         ctx.restore();
 
         // 4. Header Section
-        ctx.font = '900 24px sans-serif';
+        ctx.font = '900 22px sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('⚡ CRYSTALTIDES', cardX + 30, cardY + 45);
+        ctx.fillText('CRYSTALTIDES', cardX + 30, cardY + 45);
 
-        ctx.font = '600 14px sans-serif';
+        ctx.font = '600 13px sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText('CONTROL MATRIX • LAPTOP DEV NODE', cardX + 225, cardY + 45);
+        ctx.fillText('•   CONTROL MATRIX   •   LAPTOP DEV NODE', cardX + 205, cardY + 44);
 
         // Status Pill Badge
-        this.drawPillBadge(ctx, cardX + 500, cardY + 25, 220, 30, accentColor, statusBadgeText);
+        this.drawPillBadge(ctx, cardX + 475, cardY + 23, 245, 30, accentColor, statusBadgeText);
 
         // IP Box Pill
         const hostText = `${data.serverHost || 'dev.crystaltidessmp.net'} : ${data.serverPort || 25565}`;
-        this.drawPillBadge(ctx, cardX + 30, cardY + 65, 310, 26, '#1e293b', `📡 IP: ${hostText}`);
+        this.drawPillBadge(ctx, cardX + 30, cardY + 65, 310, 26, '#1e293b', `IP: ${hostText}`);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
         ctx.lineWidth = 1;
@@ -135,7 +135,9 @@ export class CardCanvasService {
             const lines = tr.stepText.split('\n');
             let lineY = cardY + 225;
             for (const line of lines) {
-                ctx.fillText(line, cardX + 35, lineY);
+                // Strip emoji prefixes from transition steps for clean rendering
+                const cleanLine = line.replace(/^[>\s]*[🟢⚪🟡🔴]\s*/, '> ');
+                ctx.fillText(cleanLine, cardX + 35, lineY);
                 lineY += 28;
             }
         } else {
@@ -149,9 +151,9 @@ export class CardCanvasService {
             const playerPct = Math.min(1, Math.max(0, players / maxP));
 
             // Metric 1: RAM Memory Gauge
-            ctx.font = '700 15px sans-serif';
+            ctx.font = '700 14px sans-serif';
             ctx.fillStyle = '#cbd5e1';
-            ctx.fillText('💻 MEMORIA RAM DE LAPTOP', cardX + 30, cardY + 140);
+            ctx.fillText('MEMORIA RAM DE LAPTOP', cardX + 30, cardY + 140);
             ctx.font = '600 14px sans-serif';
             ctx.fillStyle = '#94a3b8';
             ctx.fillText(`${(ramMB / 1024).toFixed(1)} GB / ${(totalRamMB / 1024).toFixed(0)} GB (${Math.round(ramPct * 100)}%)`, cardX + 500, cardY + 140);
@@ -159,9 +161,9 @@ export class CardCanvasService {
             this.drawProgressBar(ctx, cardX + 30, cardY + 155, cardW - 60, 18, isRunning ? ramPct : 0, '#8b5cf6');
 
             // Metric 2: Online Players Gauge
-            ctx.font = '700 15px sans-serif';
+            ctx.font = '700 14px sans-serif';
             ctx.fillStyle = '#cbd5e1';
-            ctx.fillText('👥 JUGADORES EN LÍNEA', cardX + 30, cardY + 210);
+            ctx.fillText('JUGADORES EN LÍNEA', cardX + 30, cardY + 210);
             ctx.font = '600 14px sans-serif';
             ctx.fillStyle = '#94a3b8';
             ctx.fillText(`${players} / ${maxP} Online`, cardX + 580, cardY + 210);
@@ -170,15 +172,15 @@ export class CardCanvasService {
 
             // Bottom Badges Grid (Ping, TPS, Status)
             const pingText = data.pingMs && data.pingMs > 0 ? `${data.pingMs} ms` : '14 ms';
-            this.drawMiniMetricBox(ctx, cardX + 30, cardY + 275, 210, 55, '📶 LATENCIA DE RED', pingText, '#0ea5e9');
-            this.drawMiniMetricBox(ctx, cardX + 260, cardY + 275, 210, 55, '⚡ ENGINE TPS', isRunning ? '20.0 TPS' : '0 TPS', '#10b981');
-            this.drawMiniMetricBox(ctx, cardX + 490, cardY + 275, 230, 55, '💻 WINGS DAEMON', isMissing ? 'DESCONECTADO' : 'ONLINE v2.0', isMissing ? '#ef4444' : '#8b5cf6');
+            this.drawMiniMetricBox(ctx, cardX + 30, cardY + 275, 210, 55, 'LATENCIA DE RED', pingText, '#0ea5e9');
+            this.drawMiniMetricBox(ctx, cardX + 260, cardY + 275, 210, 55, 'ENGINE TPS', isRunning ? '20.0 TPS' : '0 TPS', '#10b981');
+            this.drawMiniMetricBox(ctx, cardX + 490, cardY + 275, 230, 55, 'WINGS DAEMON', isMissing ? 'DESCONECTADO' : 'ONLINE v2.0', isMissing ? '#ef4444' : '#8b5cf6');
         }
 
         // 6. Footer Real-Time Pulse Line
         ctx.font = '600 12px sans-serif';
         ctx.fillStyle = '#64748b';
-        ctx.fillText(`⚡ CRYSTALBOT v2.0 • LIVE GRAPHICS MATRIX • REFRESCO ASÍNCRONO MEMORY-BUFFER`, cardX + 30, cardY + cardH - 18);
+        ctx.fillText('CRYSTALBOT v2.0 • LIVE GRAPHICS MATRIX • REFRESCO ASÍNCRONO MEMORY-BUFFER', cardX + 30, cardY + cardH - 18);
 
         return canvas.toBuffer('image/png');
     }
@@ -224,7 +226,8 @@ export class CardCanvasService {
         ctx.fill();
         ctx.font = '700 12px sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(text, x + 15, y + h / 2 + 4);
+        ctx.textAlign = 'center';
+        ctx.fillText(text, x + w / 2, y + h / 2 + 4);
         ctx.restore();
     }
 
