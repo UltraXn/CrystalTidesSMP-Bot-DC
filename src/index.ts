@@ -50,14 +50,17 @@ async function loadCommands() {
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         try {
-            const commandModule = await import(pathToFileURL(filePath).href);
-            const command: Command = commandModule.default?.data ? commandModule.default : (commandModule.default || commandModule);
+            let mod: any = await import(pathToFileURL(filePath).href);
+            while (mod && !mod.data && mod.default) {
+                mod = mod.default;
+            }
+            const command = mod as Command;
             const cmdName = command?.data?.name;
             if (cmdName && typeof command.execute === 'function') {
                 client.commands.set(cmdName, command);
                 console.log(`[Commands] Successfully loaded: /${cmdName}`);
             } else {
-                console.warn(`[Commands] File ${file} missing valid data/execute structure. Loaded symbol:`, command);
+                console.warn(`[Commands] File ${file} missing valid data/execute structure. Loaded symbol:`, mod);
             }
         } catch (err) {
             console.error(`[Commands] Failed to import ${file}:`, err);

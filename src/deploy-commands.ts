@@ -12,10 +12,12 @@ import 'dotenv/config';
 
         for (const file of commandFiles) {
             const filePath = path.join(commandsPath, file);
-            const commandModule = await import(pathToFileURL(filePath).href);
-            const command = commandModule.default || commandModule;
-            if (command?.data) {
-                commands.push(command.data.toJSON());
+            let mod: any = await import(pathToFileURL(filePath).href);
+            while (mod && !mod.data && mod.default) {
+                mod = mod.default;
+            }
+            if (mod?.data) {
+                commands.push(mod.data.toJSON());
             }
         }
 
