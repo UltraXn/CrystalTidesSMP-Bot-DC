@@ -1,17 +1,21 @@
 {
+  "$schema": "https://json.schemastore.org/package",
   "name": "discord-bot",
   "version": "1.0.0",
   "main": "src/index.ts",
   "description": "Bot oficial para la integración entre Discord, Minecraft y Web de CrystalTides SMP.",
   "scripts": {
-    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/src/index.js",
     "dev": "tsx watch src/index.ts",
     "deploy": "tsx src/deploy-commands.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.3",
     "@supabase/supabase-js": "^2.47.10",
     "discord.js": "^14.25.1",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "bun-types": "latest"

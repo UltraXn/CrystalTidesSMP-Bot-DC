@@ -1,5 +1,5 @@
 export interface PelicanServerStatus {
-    state: 'running' | 'starting' | 'stopping' | 'offline';
+    state: 'running' | 'starting' | 'stopping' | 'offline' | 'missing';
     utilization?: {
         cpu_absolute: number;
         memory_bytes: number;

@@ -1,7 +1,5 @@
-import dgram from 'dgram';
-
 export class WOLService {
-    private static MAC_ADDRESS = process.env.TARGET_MAC_ADDRESS || '20:05:3B:00:04:9D';
+    private static MAC_ADDRESS = process.env.TARGET_MAC_ADDRESS || 'a0:48:1c:dd:38:91';
     private static SPY_URL = process.env.LOCAL_SPY_URL;
     private static BOT_API_KEY = process.env.BOT_API_KEY;
 

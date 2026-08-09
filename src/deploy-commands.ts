@@ -1,21 +1,26 @@
 import { REST, Routes } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import 'dotenv/config';
-
-const commands = [];
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
-
-for (const file of commandFiles) {
-    const command = require(path.join(commandsPath, file)).default || require(path.join(commandsPath, file));
-    commands.push(command.data.toJSON());
-}
-
-const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN!);
 
 (async () => {
     try {
+        const commands = [];
+        const commandsPath = path.join(__dirname, 'commands');
+        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
+
+        for (const file of commandFiles) {
+            const filePath = path.join(commandsPath, file);
+            const commandModule = await import(pathToFileURL(filePath).href);
+            const command = commandModule.default || commandModule;
+            if (command?.data) {
+                commands.push(command.data.toJSON());
+            }
+        }
+
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN!);
+
         console.log('Empezando a refrescar los comandos de aplicación (/).');
 
         // Note: For development, using Guild commands updates instantly.
