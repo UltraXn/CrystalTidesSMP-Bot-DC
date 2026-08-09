@@ -4,6 +4,11 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 import 'dotenv/config';
 
+interface CommandModule {
+    data?: { toJSON: () => unknown };
+    default?: CommandModule;
+}
+
 (async () => {
     try {
         const commands = [];
@@ -12,7 +17,7 @@ import 'dotenv/config';
 
         for (const file of commandFiles) {
             const filePath = path.join(commandsPath, file);
-            let mod: any = await import(pathToFileURL(filePath).href);
+            let mod: CommandModule | undefined = (await import(pathToFileURL(filePath).href)) as CommandModule;
             while (mod && !mod.data && mod.default) {
                 mod = mod.default;
             }

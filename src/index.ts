@@ -37,6 +37,12 @@ const client = new Client({
 
 client.commands = new Collection();
 
+interface CommandModule {
+    data?: { name?: string };
+    execute?: (interaction: Interaction) => Promise<void>;
+    default?: CommandModule;
+}
+
 async function loadCommands() {
     const commandsPath = path.join(__dirname, 'commands');
     if (!fs.existsSync(commandsPath)) {
@@ -50,14 +56,13 @@ async function loadCommands() {
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         try {
-            let mod: any = await import(pathToFileURL(filePath).href);
+            let mod: CommandModule | undefined = (await import(pathToFileURL(filePath).href)) as CommandModule;
             while (mod && !mod.data && mod.default) {
                 mod = mod.default;
             }
-            const command = mod as Command;
-            const cmdName = command?.data?.name;
-            if (cmdName && typeof command.execute === 'function') {
-                client.commands.set(cmdName, command);
+            const cmdName = mod?.data?.name;
+            if (cmdName && typeof mod?.execute === 'function') {
+                client.commands.set(cmdName, mod as Command);
                 console.log(`[Commands] Successfully loaded: /${cmdName}`);
             } else {
                 console.warn(`[Commands] File ${file} missing valid data/execute structure. Loaded symbol:`, mod);
