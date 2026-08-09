@@ -24,6 +24,7 @@ export class PowerManager {
 
     private static readonly MC_HOST = process.env.MC_SERVER_HOST || process.env.MINECRAFT_SERVER_HOST || "127.0.0.1";
     private static readonly MC_PORT = Number.parseInt(process.env.MC_SERVER_PORT || process.env.MINECRAFT_SERVER_PORT || "25565", 10);
+    private static readonly MC_DISPLAY_HOST = process.env.MC_DISPLAY_HOST || "dev.crystaltidessmp.net";
     private static readonly AUTO_SHUTDOWN_ENABLED = process.env.AUTO_SHUTDOWN_ENABLED === 'true';
 
     /**
@@ -223,7 +224,7 @@ export class PowerManager {
 
             const cardData: CardStateData = {
                 state: state,
-                serverHost: this.MC_HOST,
+                serverHost: this.MC_DISPLAY_HOST,
                 serverPort: this.MC_PORT,
                 onlinePlayers: onlinePlayers,
                 maxPlayers: maxPlayers,
@@ -274,7 +275,7 @@ export class PowerManager {
                 `> 💻 **Nodo / Host**: ${this.laptopWasWoken ? 'Laptop Conectada (Wings OK)' : 'Laptop Apagada'}\n` +
                 `> 👥 **Jugadores**: ${onlinePlayers} / ${maxPlayers}\n` +
                 `> 💾 **Memoria RAM**: ${ramFormatted} GB / ${ramTotalFormatted} GB\n` +
-                `> 📡 **Conexión IP**: \`${this.MC_HOST}:${this.MC_PORT}\``;
+                `> 📡 **Conexión IP**: \`${this.MC_DISPLAY_HOST}:${this.MC_PORT}\``;
 
             const embed = new EmbedBuilder()
                 .setTitle('⚡ CrystalTides — Control de Nodo & Energía')
@@ -321,11 +322,11 @@ export class PowerManager {
                 const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
                 embed.setImage('attachment://dashboard.png');
 
-                await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
+                await controlMsg.edit({ embeds: [embed], files: [attachment], attachments: [], components: [row1, row2] });
             } catch (imgError) {
                 console.warn('[PowerManager] Canvas attachment upload failed/rate-limited, falling back to text embed:', imgError instanceof Error ? imgError.message : String(imgError));
                 embed.setImage(null);
-                await controlMsg.edit({ embeds: [embed], files: [], components: [row1, row2] });
+                await controlMsg.edit({ embeds: [embed], files: [], attachments: [], components: [row1, row2] });
             }
             console.log(`[PowerManager] Control embed updated successfully.`);
         } catch (error) {
