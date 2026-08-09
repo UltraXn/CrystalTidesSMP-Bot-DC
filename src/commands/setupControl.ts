@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, TextChannel } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, TextChannel, AttachmentBuilder } from 'discord.js';
 import { PowerManager } from '../services/powerManager';
+import { CardCanvasService } from '../services/cardCanvasService';
 
 export default {
     data: new SlashCommandBuilder()
@@ -46,10 +47,25 @@ export default {
                 return;
             }
 
-            const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
-            
-            // Cache the message location so PowerManager finds it instantly
-            PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
+            try {
+                const cardBuffer = await CardCanvasService.renderCardBuffer({
+                    state: 'running',
+                    serverHost: process.env.MC_DISPLAY_HOST || 'dev.crystaltidessmp.net',
+                    serverPort: Number.parseInt(process.env.MC_SERVER_PORT || '25565', 10),
+                    onlinePlayers: 0,
+                    maxPlayers: 20,
+                    ramUsedMB: 4600,
+                    ramTotalMB: 12288
+                });
+                const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
+                embed.setImage('attachment://dashboard.png');
+
+                const sentMsg = await (channel as TextChannel).send({ embeds: [embed], files: [attachment], components: [row1, row2] });
+                PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
+            } catch (cardErr) {
+                const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
+                PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
+            }
 
             // Trigger status loop immediately to update content with HD Canvas
             setTimeout(() => {
