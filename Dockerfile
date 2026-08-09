@@ -16,7 +16,7 @@ RUN npm ci
 
 FROM deps AS builder
 COPY . .
-RUN npx turbo run build --filter=discord-bot...
+RUN npx turbo run build --filter=discord-bot --filter=@crystaltides/shared
 RUN npm prune --omit=dev
 
 FROM node:24-alpine AS runner
