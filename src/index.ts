@@ -267,14 +267,29 @@ async function handleButtonAction(interaction: ButtonInteraction) {
 
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
+        console.log(`[Interaction] Command /${interaction.commandName} by ${interaction.user.tag}`);
         const command = client.commands.get(interaction.commandName);
-        if (!command) return;
+        if (!command) {
+            console.warn(`[Interaction] Command /${interaction.commandName} NOT found in client.commands`);
+            const msg = '❌ Este comando no está cargado en el bot.';
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply({ content: msg });
+            } else {
+                await interaction.reply({ content: msg, ephemeral: true });
+            }
+            return;
+        }
 
         try {
             await command.execute(interaction);
         } catch (error) {
-            console.error('Command execution error:', error);
-            await interaction.reply({ content: 'Hubo un error al ejecutar el comando.', ephemeral: true });
+            console.error(`[Interaction] Error in /${interaction.commandName}:`, error);
+            const errorContent = `❌ Error al ejecutar /${interaction.commandName}: ${error instanceof Error ? error.message : String(error)}`;
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply({ content: errorContent });
+            } else {
+                await interaction.reply({ content: errorContent, ephemeral: true });
+            }
         }
     } else if (interaction.isButton()) {
         try {
