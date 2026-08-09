@@ -35,6 +35,7 @@ export class PelicanService {
                 method: 'POST',
                 headers: this.headers,
                 body: JSON.stringify({ signal }),
+                signal: AbortSignal.timeout(5000),
             });
 
             return response.status === 204;
@@ -54,6 +55,7 @@ export class PelicanService {
             const response = await fetch(`${this.baseUrl}/api/client/servers/${this.serverId}/resources`, {
                 method: 'GET',
                 headers: this.headers,
+                signal: AbortSignal.timeout(3000),
             });
 
             if (!response.ok) return null;
