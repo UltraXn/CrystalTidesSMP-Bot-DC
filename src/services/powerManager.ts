@@ -5,6 +5,8 @@ import { CardCanvasService, CardStateData } from './cardCanvasService';
 import { Logger } from './logger';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const execAsync = promisify(exec);
 
@@ -18,7 +20,8 @@ export class PowerManager {
     private static serverStartTimeUnix: number | null = null;
     private static activeTransition: { action: string; step: number; title: string; progress: number } | null = null;
 
-    // Cached control message location — set by setupControl command
+    // Cached control message location — persisted to disk
+    private static readonly CONTROL_FILE = path.join(process.cwd(), '.control_msg.json');
     private static controlChannelId: string | null = null;
     private static controlMessageId: string | null = null;
     private static lastUploadedState: string | null = null;
@@ -29,11 +32,27 @@ export class PowerManager {
     private static readonly MC_DISPLAY_HOST = process.env.MC_DISPLAY_HOST || "dev.crystaltidessmp.net";
     private static readonly AUTO_SHUTDOWN_ENABLED = process.env.AUTO_SHUTDOWN_ENABLED === 'true';
 
+    private static loadControlMessageLocation() {
+        try {
+            if (fs.existsSync(this.CONTROL_FILE)) {
+                const data = JSON.parse(fs.readFileSync(this.CONTROL_FILE, 'utf-8'));
+                if (data.channelId && data.messageId) {
+                    this.controlChannelId = data.channelId;
+                    this.controlMessageId = data.messageId;
+                    console.log(`[PowerManager] Loaded control message location from file: channel ${data.channelId}, message ${data.messageId}`);
+                }
+            }
+        } catch (e) {
+            console.warn('[PowerManager] Failed to load control message location file:', e);
+        }
+    }
+
     /**
      * Initializes the PowerManager loop.
      */
     static init(client: Client) {
         this.client = client;
+        this.loadControlMessageLocation();
         
         // Run check loop every 10 seconds for ultra reactivity
         this.checkInterval = setInterval(() => this.checkStatusLoop(), 10000);
@@ -112,6 +131,12 @@ export class PowerManager {
     static setControlMessage(channelId: string, messageId: string) {
         this.controlChannelId = channelId;
         this.controlMessageId = messageId;
+        try {
+            fs.writeFileSync(this.CONTROL_FILE, JSON.stringify({ channelId, messageId }), 'utf-8');
+            console.log(`[PowerManager] Saved control message location to file: channel ${channelId}, message ${messageId}`);
+        } catch (e) {
+            console.warn('[PowerManager] Failed to save control message location file:', e);
+        }
     }
 
     /**
