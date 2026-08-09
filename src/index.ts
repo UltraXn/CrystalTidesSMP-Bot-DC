@@ -12,6 +12,8 @@ import { PelicanService } from './services/pelicanService';
 import { WOLService } from './services/wolService';
 import { PowerManager } from './services/powerManager';
 
+import { pathToFileURL } from 'node:url';
+
 export interface Command {
     data: { name: string };
     execute: (interaction: Interaction) => Promise<void>;
@@ -37,15 +39,28 @@ client.commands = new Collection();
 
 async function loadCommands() {
     const commandsPath = path.join(__dirname, 'commands');
-    if (!fs.existsSync(commandsPath)) return;
+    if (!fs.existsSync(commandsPath)) {
+        console.error(`[Commands] Directory NOT found: ${commandsPath}`);
+        return;
+    }
 
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
+    console.log(`[Commands] Scanning ${commandsPath} (${commandFiles.length} files found)...`);
+
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
-        const commandModule = await import(filePath);
-        const command: Command = commandModule.default || commandModule;
-        if (command?.data?.name && typeof command.execute === 'function') {
-            client.commands.set(command.data.name, command);
+        try {
+            const commandModule = await import(pathToFileURL(filePath).href);
+            const command: Command = commandModule.default?.data ? commandModule.default : (commandModule.default || commandModule);
+            const cmdName = command?.data?.name;
+            if (cmdName && typeof command.execute === 'function') {
+                client.commands.set(cmdName, command);
+                console.log(`[Commands] Successfully loaded: /${cmdName}`);
+            } else {
+                console.warn(`[Commands] File ${file} missing valid data/execute structure. Loaded symbol:`, command);
+            }
+        } catch (err) {
+            console.error(`[Commands] Failed to import ${file}:`, err);
         }
     }
 }
