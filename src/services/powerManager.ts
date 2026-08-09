@@ -24,6 +24,7 @@ export class PowerManager {
 
     private static readonly MC_HOST = process.env.MC_SERVER_HOST || process.env.MINECRAFT_SERVER_HOST || "127.0.0.1";
     private static readonly MC_PORT = Number.parseInt(process.env.MC_SERVER_PORT || process.env.MINECRAFT_SERVER_PORT || "25565", 10);
+    private static readonly AUTO_SHUTDOWN_ENABLED = process.env.AUTO_SHUTDOWN_ENABLED === 'true';
 
     /**
      * Initializes the PowerManager loop.
@@ -319,12 +320,14 @@ export class PowerManager {
 
         if (!this.countdownActive) {
             this.countdownActive = true;
-            this.countdownSecondsRemaining = 300;
-            Logger.log('Energía', '⚠️ No hay jugadores conectados. Se iniciará el apagado automático en 5 minutos.', 'warn');
+            const minutes = Number.parseInt(process.env.AUTO_SHUTDOWN_MINUTES || '15', 10);
+            this.countdownSecondsRemaining = minutes * 60;
+            Logger.log('Energía', `⚠️ No hay jugadores conectados. Se iniciará el apagado automático en ${minutes} minutos.`, 'warn');
             return;
         }
 
-        this.countdownSecondsRemaining -= 30;
+        // Interval runs every 10 seconds, decrement by 10s
+        this.countdownSecondsRemaining -= 10;
         if (this.countdownSecondsRemaining <= 0) {
             this.countdownActive = false;
             await this.executeShutdownSequence();
@@ -341,10 +344,13 @@ export class PowerManager {
 
             this.updateLaptopState(state);
 
-            if (this.laptopWasWoken && state === 'running') {
+            if (this.AUTO_SHUTDOWN_ENABLED && this.laptopWasWoken && state === 'running') {
                 const mcPing = await MinecraftService.pingServer(this.MC_HOST, this.MC_PORT);
-                const onlinePlayers = mcPing ? mcPing.players : 0;
-                await this.handleCountdownRunning(onlinePlayers);
+                if (mcPing !== null) {
+                    await this.handleCountdownRunning(mcPing.players);
+                } else if (this.countdownActive) {
+                    this.countdownActive = false;
+                }
             } else if (this.countdownActive) {
                 this.countdownActive = false;
             }
