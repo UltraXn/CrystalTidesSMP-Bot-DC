@@ -319,38 +319,15 @@ export class PowerManager {
                     .setDisabled(this.activeTransition !== null || (!isOnlineOrStarting && !isStopping)),
             );
 
-            const hasAttachment = controlMsg.attachments.size > 0;
-            const stateChanged = this.lastUploadedState !== state;
-            const transitionActive = this.activeTransition !== null;
-            const forceTimePassed = (Date.now() - this.lastUploadTimestamp) > 120000;
-
-            const shouldUploadCanvas = !hasAttachment || stateChanged || transitionActive || forceTimePassed;
-
-            if (shouldUploadCanvas) {
-                try {
-                    const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
-                    const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
-                    embed.setImage('attachment://dashboard.png');
-
-                    await controlMsg.edit({ embeds: [embed], files: [attachment], attachments: [], components: [row1, row2] });
-                    this.lastUploadedState = state;
-                    this.lastUploadTimestamp = Date.now();
-                    console.log(`[PowerManager] HD Canvas card image uploaded successfully.`);
-                } catch (imgError) {
-                    console.warn('[PowerManager] Canvas attachment upload failed, falling back to text embed:', imgError instanceof Error ? imgError.message : String(imgError));
-                    embed.setImage(null);
-                    await controlMsg.edit({ embeds: [embed], files: [], attachments: [], components: [row1, row2] });
-                }
+            const existingAttachment = controlMsg.attachments.first();
+            if (existingAttachment) {
+                embed.setImage(existingAttachment.url);
             } else {
-                const existingAttachment = controlMsg.attachments.first();
-                if (existingAttachment) {
-                    embed.setImage(existingAttachment.url);
-                } else {
-                    embed.setImage(null);
-                }
-                await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
-                console.log(`[PowerManager] Control embed text updated cleanly (Canvas active).`);
+                embed.setImage(null);
             }
+
+            await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
+            console.log(`[PowerManager] Control embed updated successfully.`);
         } catch (error) {
             console.error('[PowerManager] Error updating control embed:', error);
         }

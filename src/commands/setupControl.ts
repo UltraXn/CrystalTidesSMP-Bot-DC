@@ -63,6 +63,7 @@ export default {
                 const sentMsg = await (channel as TextChannel).send({ embeds: [embed], files: [attachment], components: [row1, row2] });
                 PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
             } catch (cardErr) {
+                console.error('[setupControl] Error sending canvas attachment on setup:', cardErr);
                 const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
                 PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
             }
