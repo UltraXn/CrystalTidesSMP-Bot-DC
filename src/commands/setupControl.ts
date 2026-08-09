@@ -8,8 +8,7 @@ export default {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        console.log(`[setup-control] Executing for user ${interaction.user.tag} in channel ${interaction.channelId}`);
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         try {
             const embed = new EmbedBuilder()
@@ -47,9 +46,7 @@ export default {
                 return;
             }
 
-            console.log(`[setup-control] Sending initial embed to channel ${channel.id}...`);
             const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
-            console.log(`[setup-control] Initial embed sent (ID: ${sentMsg.id})`);
             
             // Cache the message location so PowerManager finds it instantly
             PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
@@ -60,7 +57,6 @@ export default {
             }, 500);
 
             await interaction.editReply('¡Panel de control persistente creado con éxito en este canal!');
-            console.log(`[setup-control] Success reply sent to user.`);
         } catch (error) {
             console.error('[setup-control] Error executing command:', error);
             const errorMsg = `❌ Error al crear el panel de control: ${error instanceof Error ? error.message : String(error)}`;

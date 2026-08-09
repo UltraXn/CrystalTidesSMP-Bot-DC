@@ -122,18 +122,15 @@ export class PowerManager {
                 const channel = await this.client.channels.fetch(this.controlChannelId) as TextChannel;
                 if (channel && 'messages' in channel) {
                     const msg = await channel.messages.fetch(this.controlMessageId);
-                    console.log(`[PowerManager] Fast path found control message (ID: ${msg.id})`);
                     return msg;
                 }
             } catch (err) {
-                console.error(`[PowerManager] Fast path failed to fetch control message:`, err);
                 // Message was deleted — clear cache
                 this.controlChannelId = null;
                 this.controlMessageId = null;
             }
         }
 
-        console.log(`[PowerManager] Running slow path channel scan for control embed...`);
         // Slow path fallback: scan all channels once on startup
         for (const guild of this.client.guilds.cache.values()) {
             try {
@@ -149,14 +146,13 @@ export class PowerManager {
                                  m.embeds[0]?.title?.includes('Despertando') || m.embeds[0]?.title?.includes('Arrancando'))
                             );
                             if (controlMsg) {
-                                console.log(`[PowerManager] Slow path found control message in channel #${textChannel.name} (ID: ${controlMsg.id})`);
                                 // Cache for future calls
                                 this.controlChannelId = textChannel.id;
                                 this.controlMessageId = controlMsg.id;
                                 return controlMsg;
                             }
                         } catch (err) {
-                            console.warn(`[PowerManager] Could not read channel ${channel.id}: ${err instanceof Error ? err.message : String(err)}`);
+                            // Ignored per-channel fetch errors
                         }
                     }
                 }
@@ -164,7 +160,6 @@ export class PowerManager {
                 console.warn(`[PowerManager] Failed fetching channels for guild ${guild.id}: ${err instanceof Error ? err.message : String(err)}`);
             }
         }
-        console.log(`[PowerManager] No control embed message found on any channel.`);
         return null;
     }
 
@@ -172,12 +167,8 @@ export class PowerManager {
      * Updates the persistent control embed with the current state and renders a fresh Canvas PNG.
      */
     static async updateControlEmbed() {
-        console.log(`[PowerManager] updateControlEmbed called...`);
         const controlMsg = await this.findControlMessage();
-        if (!controlMsg) {
-            console.log(`[PowerManager] updateControlEmbed aborting: findControlMessage returned null.`);
-            return;
-        }
+        if (!controlMsg) return;
 
         try {
             const status = await PelicanService.getServerStatus();
