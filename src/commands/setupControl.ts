@@ -46,8 +46,11 @@ export default {
             return;
         }
 
-        await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
+        const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
         
+        // Cache the message location so PowerManager finds it instantly (no channel scan needed)
+        PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
+
         // Trigger status loop immediately to update the content
         setTimeout(() => {
             PowerManager.updateControlEmbed();

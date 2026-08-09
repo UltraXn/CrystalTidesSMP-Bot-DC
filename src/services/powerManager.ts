@@ -18,6 +18,10 @@ export class PowerManager {
     private static serverStartTimeUnix: number | null = null;
     private static activeTransition: { action: string; step: number; title: string; progress: number } | null = null;
 
+    // Cached control message location — set by setupControl command
+    private static controlChannelId: string | null = null;
+    private static controlMessageId: string | null = null;
+
     private static readonly MC_HOST = process.env.MINECRAFT_SERVER_HOST || "dev.crystaltidessmp.net";
     private static readonly MC_PORT = Number.parseInt(process.env.MINECRAFT_SERVER_PORT || "25565", 10);
 
@@ -98,20 +102,51 @@ export class PowerManager {
     }
 
     /**
-     * Finds the persistent control embed message in all guild text channels.
+     * Registers the control message location so the loop doesn't need to scan all channels.
+     * Called by setupControl after sending the initial embed.
+     */
+    static setControlMessage(channelId: string, messageId: string) {
+        this.controlChannelId = channelId;
+        this.controlMessageId = messageId;
+    }
+
+    /**
+     * Fetches the cached control embed message directly by channel+message ID.
+     * Falls back to a single-channel scan only on first boot (when IDs are unknown).
      */
     static async findControlMessage() {
+        // Fast path: use cached IDs
+        if (this.controlChannelId && this.controlMessageId) {
+            try {
+                const channel = await this.client.channels.fetch(this.controlChannelId) as TextChannel;
+                if (channel && 'messages' in channel) {
+                    return await channel.messages.fetch(this.controlMessageId);
+                }
+            } catch {
+                // Message was deleted — clear cache
+                this.controlChannelId = null;
+                this.controlMessageId = null;
+            }
+        }
+
+        // Slow path fallback: scan all channels once on startup
         for (const guild of this.client.guilds.cache.values()) {
             for (const channel of guild.channels.cache.values()) {
                 if (channel.isTextBased() && 'messages' in channel) {
                     try {
                         const textChannel = channel as TextChannel;
                         const messages = await textChannel.messages.fetch({ limit: 50 });
-                        const controlMsg = messages.find(m => 
-                            m.author.id === this.client.user?.id && 
-                            (m.embeds[0]?.title?.includes('Control') || m.embeds[0]?.title?.includes('Nodo') || m.embeds[0]?.title?.includes('Despertando') || m.embeds[0]?.title?.includes('Arrancando'))
+                        const controlMsg = messages.find(m =>
+                            m.author.id === this.client.user?.id &&
+                            (m.embeds[0]?.title?.includes('Control') || m.embeds[0]?.title?.includes('Nodo') ||
+                             m.embeds[0]?.title?.includes('Despertando') || m.embeds[0]?.title?.includes('Arrancando'))
                         );
-                        if (controlMsg) return controlMsg;
+                        if (controlMsg) {
+                            // Cache for future calls
+                            this.controlChannelId = textChannel.id;
+                            this.controlMessageId = controlMsg.id;
+                            return controlMsg;
+                        }
                     } catch {
                         /* ignore permission or channel errors */
                     }
