@@ -21,7 +21,7 @@ export class PowerManager {
     private static activeTransition: { action: string; step: number; title: string; progress: number } | null = null;
 
     // Cached control message location — persisted to disk
-    private static readonly CONTROL_FILE = path.join(process.cwd(), '.control_msg.json');
+    private static readonly CONTROL_FILE = path.join(__dirname, '../../.control_msg.json');
     private static controlChannelId: string | null = null;
     private static controlMessageId: string | null = null;
     private static lastUploadedState: string | null = null;
@@ -415,6 +415,7 @@ export class PowerManager {
         form.append('payload_json', JSON.stringify({
             embeds: [embed.toJSON()],
             components: components.map(c => c.toJSON()),
+            attachments: [{ id: '0', filename: 'dashboard.png' }]
         }));
         form.append('files[0]', new Blob([new Uint8Array(pngBuffer)], { type: 'image/png' }), 'dashboard.png');
 
