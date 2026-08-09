@@ -136,27 +136,32 @@ export class PowerManager {
         console.log(`[PowerManager] Running slow path channel scan for control embed...`);
         // Slow path fallback: scan all channels once on startup
         for (const guild of this.client.guilds.cache.values()) {
-            for (const channel of guild.channels.cache.values()) {
-                if (channel.isTextBased() && 'messages' in channel) {
-                    try {
-                        const textChannel = channel as TextChannel;
-                        const messages = await textChannel.messages.fetch({ limit: 50 });
-                        const controlMsg = messages.find(m =>
-                            m.author.id === this.client.user?.id &&
-                            (m.embeds[0]?.title?.includes('Control') || m.embeds[0]?.title?.includes('Nodo') ||
-                             m.embeds[0]?.title?.includes('Despertando') || m.embeds[0]?.title?.includes('Arrancando'))
-                        );
-                        if (controlMsg) {
-                            console.log(`[PowerManager] Slow path found control message in channel ${textChannel.name} (ID: ${controlMsg.id})`);
-                            // Cache for future calls
-                            this.controlChannelId = textChannel.id;
-                            this.controlMessageId = controlMsg.id;
-                            return controlMsg;
+            try {
+                const channels = await guild.channels.fetch();
+                for (const channel of channels.values()) {
+                    if (channel && channel.isTextBased() && 'messages' in channel) {
+                        try {
+                            const textChannel = channel as TextChannel;
+                            const messages = await textChannel.messages.fetch({ limit: 25 });
+                            const controlMsg = messages.find(m =>
+                                m.author.id === this.client.user?.id &&
+                                (m.embeds[0]?.title?.includes('Control') || m.embeds[0]?.title?.includes('Nodo') ||
+                                 m.embeds[0]?.title?.includes('Despertando') || m.embeds[0]?.title?.includes('Arrancando'))
+                            );
+                            if (controlMsg) {
+                                console.log(`[PowerManager] Slow path found control message in channel #${textChannel.name} (ID: ${controlMsg.id})`);
+                                // Cache for future calls
+                                this.controlChannelId = textChannel.id;
+                                this.controlMessageId = controlMsg.id;
+                                return controlMsg;
+                            }
+                        } catch (err) {
+                            console.warn(`[PowerManager] Could not read channel ${channel.id}: ${err instanceof Error ? err.message : String(err)}`);
                         }
-                    } catch (err) {
-                        console.warn(`[PowerManager] Could not read channel ${channel.id}: ${err instanceof Error ? err.message : String(err)}`);
                     }
                 }
+            } catch (err) {
+                console.warn(`[PowerManager] Failed fetching channels for guild ${guild.id}: ${err instanceof Error ? err.message : String(err)}`);
             }
         }
         console.log(`[PowerManager] No control embed message found on any channel.`);
