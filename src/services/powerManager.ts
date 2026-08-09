@@ -22,8 +22,8 @@ export class PowerManager {
     private static controlChannelId: string | null = null;
     private static controlMessageId: string | null = null;
 
-    private static readonly MC_HOST = process.env.MINECRAFT_SERVER_HOST || "dev.crystaltidessmp.net";
-    private static readonly MC_PORT = Number.parseInt(process.env.MINECRAFT_SERVER_PORT || "25565", 10);
+    private static readonly MC_HOST = process.env.MC_SERVER_HOST || process.env.MINECRAFT_SERVER_HOST || "127.0.0.1";
+    private static readonly MC_PORT = Number.parseInt(process.env.MC_SERVER_PORT || process.env.MINECRAFT_SERVER_PORT || "25565", 10);
 
     /**
      * Initializes the PowerManager loop.

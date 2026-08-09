@@ -5,11 +5,13 @@ export class MinecraftService {
      * Pings a Minecraft server to get its status and player counts.
      */
     static async pingServer(host: string, port: number): Promise<{ online: boolean; players: number; max: number } | null> {
-        return new Promise((resolve) => {
+        let timer: NodeJS.Timeout | null = null;
+        const pingPromise = new Promise<{ online: boolean; players: number; max: number } | null>((resolve) => {
             const socket = new net.Socket();
             socket.setTimeout(2500);
 
             const cleanUp = () => {
+                if (timer) clearTimeout(timer);
                 socket.removeAllListeners();
                 socket.destroy();
             };
@@ -87,6 +89,12 @@ export class MinecraftService {
                 }
             });
         });
+
+        const timeoutPromise = new Promise<null>((resolve) => {
+            timer = setTimeout(() => resolve(null), 2500);
+        });
+
+        return Promise.race([pingPromise, timeoutPromise]);
     }
 
     private static writeVarInt(value: number): Buffer {
