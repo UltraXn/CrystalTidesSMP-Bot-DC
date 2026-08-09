@@ -1,6 +1,5 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, TextChannel, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, TextChannel } from 'discord.js';
 import { PowerManager } from '../services/powerManager';
-import { CardCanvasService } from '../services/cardCanvasService';
 
 export default {
     data: new SlashCommandBuilder()
@@ -47,37 +46,9 @@ export default {
                 return;
             }
 
-            let sentWithCanvas = false;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    const cardBuffer = await CardCanvasService.renderCardBuffer({
-                        state: 'running',
-                        serverHost: process.env.MC_DISPLAY_HOST || 'dev.crystaltidessmp.net',
-                        serverPort: Number.parseInt(process.env.MC_SERVER_PORT || '25565', 10),
-                        onlinePlayers: 0,
-                        maxPlayers: 20,
-                        ramUsedMB: 4600,
-                        ramTotalMB: 12288
-                    });
-                    const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
-                    embed.setImage('attachment://dashboard.png');
-
-                    const sentMsg = await (channel as TextChannel).send({ embeds: [embed], files: [attachment], components: [row1, row2] });
-                    PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
-                    sentWithCanvas = true;
-                    break;
-                } catch (cardErr) {
-                    console.error(`[setupControl] Canvas attachment attempt ${attempt}/3 failed:`, cardErr instanceof Error ? cardErr.message : String(cardErr));
-                    if (attempt < 3) {
-                        await new Promise(r => setTimeout(r, 2000 * attempt));
-                    }
-                }
-            }
-
-            if (!sentWithCanvas) {
-                const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
-                PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
-            }
+            // Send text-only message; the updateControlEmbed loop (500ms later) adds the canvas via native fetch
+            const sentMsg = await (channel as TextChannel).send({ embeds: [embed], components: [row1, row2] });
+            PowerManager.setControlMessage(sentMsg.channelId, sentMsg.id);
 
             // Trigger status loop immediately to update content with HD Canvas
             setTimeout(() => {

@@ -1,4 +1,4 @@
-import { Client, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, TextChannel, AttachmentBuilder } from 'discord.js';
+import { Client, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, TextChannel } from 'discord.js';
 import { PelicanService } from './pelicanService';
 import { MinecraftService } from './minecraftService';
 import { CardCanvasService, CardStateData } from './cardCanvasService';
@@ -325,36 +325,39 @@ export class PowerManager {
 
             if (shouldUploadCanvas) {
                 let canvasUploaded = false;
-                const maxRetries = 3;
 
-                for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                    try {
-                        const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
-                        const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
-                        embed.setImage('attachment://dashboard.png');
-                        await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
+                try {
+                    const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
+                    embed.setImage('attachment://dashboard.png');
+
+                    // Use native fetch to bypass discord.js's undici (which gets 'other side closed' errors)
+                    canvasUploaded = await this.editMessageWithCanvasNative(
+                        controlMsg.channelId,
+                        controlMsg.id,
+                        embed,
+                        [row1, row2],
+                        cardBuffer
+                    );
+
+                    if (canvasUploaded) {
                         this.lastUploadedState = stateKey;
                         this.lastUploadTimestamp = Date.now();
-                        console.log(`[PowerManager] Control embed updated with CANVAS (state: ${stateKey}, attempt: ${attempt}).`);
-                        canvasUploaded = true;
-                        break;
-                    } catch (canvasErr) {
-                        const errMsg = canvasErr instanceof Error ? canvasErr.message : String(canvasErr);
-                        console.warn(`[PowerManager] Canvas upload attempt ${attempt}/${maxRetries} failed: ${errMsg}`);
-                        if (attempt < maxRetries) {
-                            await new Promise(r => setTimeout(r, 2000 * attempt));
-                        }
+                        console.log(`[PowerManager] Control embed updated with CANVAS via native fetch (state: ${stateKey}).`);
                     }
+                } catch (renderErr) {
+                    console.warn(`[PowerManager] Canvas render failed:`, renderErr instanceof Error ? renderErr.message : String(renderErr));
                 }
 
                 if (!canvasUploaded) {
-                    // All retries failed — fall back to text-only update
-                    console.warn(`[PowerManager] All ${maxRetries} canvas upload attempts failed, falling back to text-only.`);
+                    // Native fetch failed — fall back to text-only via discord.js
                     const existingAttachment = controlMsg.attachments.first();
                     if (existingAttachment) {
                         embed.setImage(existingAttachment.url);
+                    } else {
+                        embed.setImage(null);
                     }
                     await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
+                    console.log(`[PowerManager] Control embed updated (text-only fallback).`);
                 }
             } else {
                 // No state change — just update text & buttons, keep existing image
@@ -367,6 +370,43 @@ export class PowerManager {
         } catch (error) {
             console.error('[PowerManager] Error updating control embed:', error);
         }
+    }
+    /**
+     * Uploads a canvas PNG to Discord using Node 24's native fetch + FormData.
+     * This bypasses discord.js's undici HTTP client which causes persistent
+     * 'other side closed' (UND_ERR_SOCKET) errors on Oracle ARM64 VPS.
+     */
+    private static async editMessageWithCanvasNative(
+        channelId: string,
+        messageId: string,
+        embed: EmbedBuilder,
+        components: ActionRowBuilder<ButtonBuilder>[],
+        pngBuffer: Buffer
+    ): Promise<boolean> {
+        const token = process.env.DISCORD_TOKEN;
+        if (!token) return false;
+
+        const form = new FormData();
+        form.append('payload_json', JSON.stringify({
+            embeds: [embed.toJSON()],
+            components: components.map(c => c.toJSON()),
+        }));
+        form.append('files[0]', new Blob([new Uint8Array(pngBuffer)], { type: 'image/png' }), 'dashboard.png');
+
+        const res = await globalThis.fetch(
+            `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`,
+            {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bot ${token}` },
+                body: form,
+            }
+        );
+
+        if (!res.ok) {
+            const body = await res.text().catch(() => '(no body)');
+            console.warn(`[PowerManager] Native fetch upload failed: HTTP ${res.status} — ${body}`);
+        }
+        return res.ok;
     }
 
     private static updateLaptopState(state: string) {
