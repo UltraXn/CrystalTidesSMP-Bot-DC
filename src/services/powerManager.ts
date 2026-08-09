@@ -21,6 +21,8 @@ export class PowerManager {
     // Cached control message location — set by setupControl command
     private static controlChannelId: string | null = null;
     private static controlMessageId: string | null = null;
+    private static lastUploadedState: string | null = null;
+    private static lastUploadTimestamp = 0;
 
     private static readonly MC_HOST = process.env.MC_SERVER_HOST || process.env.MINECRAFT_SERVER_HOST || "127.0.0.1";
     private static readonly MC_PORT = Number.parseInt(process.env.MC_SERVER_PORT || process.env.MINECRAFT_SERVER_PORT || "25565", 10);
@@ -317,18 +319,38 @@ export class PowerManager {
                     .setDisabled(this.activeTransition !== null || (!isOnlineOrStarting && !isStopping)),
             );
 
-            try {
-                const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
-                const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
-                embed.setImage('attachment://dashboard.png');
+            const hasAttachment = controlMsg.attachments.size > 0;
+            const stateChanged = this.lastUploadedState !== state;
+            const transitionActive = this.activeTransition !== null;
+            const forceTimePassed = (Date.now() - this.lastUploadTimestamp) > 120000;
 
-                await controlMsg.edit({ embeds: [embed], files: [attachment], attachments: [], components: [row1, row2] });
-            } catch (imgError) {
-                console.warn('[PowerManager] Canvas attachment upload failed/rate-limited, falling back to text embed:', imgError instanceof Error ? imgError.message : String(imgError));
-                embed.setImage(null);
-                await controlMsg.edit({ embeds: [embed], files: [], attachments: [], components: [row1, row2] });
+            const shouldUploadCanvas = !hasAttachment || stateChanged || transitionActive || forceTimePassed;
+
+            if (shouldUploadCanvas) {
+                try {
+                    const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
+                    const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
+                    embed.setImage('attachment://dashboard.png');
+
+                    await controlMsg.edit({ embeds: [embed], files: [attachment], attachments: [], components: [row1, row2] });
+                    this.lastUploadedState = state;
+                    this.lastUploadTimestamp = Date.now();
+                    console.log(`[PowerManager] HD Canvas card image uploaded successfully.`);
+                } catch (imgError) {
+                    console.warn('[PowerManager] Canvas attachment upload failed, falling back to text embed:', imgError instanceof Error ? imgError.message : String(imgError));
+                    embed.setImage(null);
+                    await controlMsg.edit({ embeds: [embed], files: [], attachments: [], components: [row1, row2] });
+                }
+            } else {
+                const existingAttachment = controlMsg.attachments.first();
+                if (existingAttachment) {
+                    embed.setImage(existingAttachment.url);
+                } else {
+                    embed.setImage(null);
+                }
+                await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
+                console.log(`[PowerManager] Control embed text updated cleanly (Canvas active).`);
             }
-            console.log(`[PowerManager] Control embed updated successfully.`);
         } catch (error) {
             console.error('[PowerManager] Error updating control embed:', error);
         }
