@@ -32,6 +32,9 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildPresences
     ],
+    rest: {
+        timeout: 30000
+    }
 });
 
 client.commands = new Collection();

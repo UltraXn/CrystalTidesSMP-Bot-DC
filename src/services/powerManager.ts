@@ -263,6 +263,9 @@ export class PowerManager {
             const isOffline = state === 'offline';
             const isMissing = state === 'missing';
             const isRunning = state === 'running';
+            const isStarting = state === 'starting';
+            const isStopping = state === 'stopping';
+            const isOnlineOrStarting = isRunning || isStarting;
 
             const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
@@ -272,22 +275,22 @@ export class PowerManager {
                     .setDisabled(this.activeTransition !== null || !isMissing),
                 new ButtonBuilder()
                     .setCustomId('pelican_start')
-                    .setLabel(this.activeTransition?.action === 'pelican_start' ? '⏳ Arrancando Server...' : '▶️ Iniciar Minecraft')
+                    .setLabel(this.activeTransition?.action === 'pelican_start' || isStarting ? '⏳ Arrancando Server...' : '▶️ Iniciar Minecraft')
                     .setStyle(ButtonStyle.Success)
-                    .setDisabled(this.activeTransition !== null || !isOffline),
+                    .setDisabled(this.activeTransition !== null || (!isOffline && !isMissing)),
             );
 
             const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                     .setCustomId('pelican_restart')
-                    .setLabel('🔄 Reiniciar')
+                    .setLabel(this.activeTransition?.action === 'pelican_restart' ? '⏳ Reiniciando...' : '🔄 Reiniciar')
                     .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(this.activeTransition !== null || !isRunning),
+                    .setDisabled(this.activeTransition !== null || !isOnlineOrStarting),
                 new ButtonBuilder()
                     .setCustomId('pelican_stop')
-                    .setLabel(this.activeTransition?.action === 'pelican_stop' ? '⏳ Deteniendo...' : '🛑 Detener')
+                    .setLabel(this.activeTransition?.action === 'pelican_stop' || isStopping ? '⏳ Deteniendo...' : '🛑 Detener')
                     .setStyle(ButtonStyle.Danger)
-                    .setDisabled(this.activeTransition !== null || !isRunning),
+                    .setDisabled(this.activeTransition !== null || (!isOnlineOrStarting && !isStopping)),
             );
 
             console.log(`[PowerManager] Updating control embed on Discord (Message ID: ${controlMsg.id})...`);
