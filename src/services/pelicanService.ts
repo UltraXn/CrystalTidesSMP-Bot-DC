@@ -4,11 +4,12 @@ export interface PelicanServerStatus {
         cpu_absolute: number;
         memory_bytes: number;
         disk_bytes: number;
-    }
+    };
 }
 
 export class PelicanService {
-    private static baseUrl = process.env.PELICAN_URL || 'https://panel.crystaltidessmp.net';
+    private static externalUrl = process.env.PELICAN_URL || 'https://panel.crystaltidessmp.net';
+    private static internalUrl = process.env.PELICAN_INTERNAL_URL || 'http://panel';
     private static apiKey = process.env.PELICAN_API_KEY;
     private static serverId = process.env.PELICAN_SERVER_ID;
 
@@ -16,8 +17,30 @@ export class PelicanService {
         return {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
-            'Accept': 'Application/vnd.pelican.v1+json',
+            'Accept': 'application/json',
         };
+    }
+
+    /**
+     * Sends HTTP request to Pelican Panel, trying internal container URL first to avoid hairpin NAT timeouts.
+     */
+    private static async fetchPelican(path: string, init: RequestInit): Promise<Response> {
+        const urlsToTry = Array.from(new Set([this.internalUrl, this.externalUrl]));
+        let lastError: unknown = null;
+
+        for (const baseUrl of urlsToTry) {
+            try {
+                const res = await fetch(`${baseUrl}${path}`, {
+                    ...init,
+                    headers: this.headers,
+                    signal: AbortSignal.timeout(3000),
+                });
+                if (res.ok || res.status === 204) return res;
+            } catch (err) {
+                lastError = err;
+            }
+        }
+        throw lastError || new Error('Pelican panel API unreachable');
     }
 
     /**
@@ -31,11 +54,9 @@ export class PelicanService {
         }
 
         try {
-            const response = await fetch(`${this.baseUrl}/api/client/servers/${this.serverId}/power`, {
+            const response = await this.fetchPelican(`/api/client/servers/${this.serverId}/power`, {
                 method: 'POST',
-                headers: this.headers,
                 body: JSON.stringify({ signal }),
-                signal: AbortSignal.timeout(5000),
             });
 
             return response.status === 204;
@@ -52,13 +73,9 @@ export class PelicanService {
         if (!this.apiKey || !this.serverId) return null;
 
         try {
-            const response = await fetch(`${this.baseUrl}/api/client/servers/${this.serverId}/resources`, {
+            const response = await this.fetchPelican(`/api/client/servers/${this.serverId}/resources`, {
                 method: 'GET',
-                headers: this.headers,
-                signal: AbortSignal.timeout(3000),
             });
-
-            if (!response.ok) return null;
 
             const data = await response.json();
             return {
