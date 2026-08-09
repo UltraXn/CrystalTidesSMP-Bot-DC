@@ -19,5 +19,8 @@
   },
   "devDependencies": {
     "bun-types": "latest"
+  },
+  "optionalDependencies": {
+    "@napi-rs/canvas-linux-arm64-gnu": "^1.0.3"
   }
 }
