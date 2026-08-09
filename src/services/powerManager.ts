@@ -316,17 +316,16 @@ export class PowerManager {
                     .setDisabled(this.activeTransition !== null || (!isOnlineOrStarting && !isStopping)),
             );
 
-            // Step 1: Instant text & button update (100% reliable, zero network errors, zero attachment rate limits)
-            await controlMsg.edit({ embeds: [embed], components: [row1, row2] });
-
-            // Step 2: Try optional HD Canvas image attachment rendering safely
             try {
                 const cardBuffer = await CardCanvasService.renderCardBuffer(cardData);
                 const attachment = new AttachmentBuilder(cardBuffer, { name: 'dashboard.png' });
                 embed.setImage('attachment://dashboard.png');
+
                 await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
             } catch (imgError) {
-                // If attachment upload fails or times out, text and buttons are ALREADY updated and 100% functional!
+                console.warn('[PowerManager] Canvas attachment upload failed/rate-limited, falling back to text embed:', imgError instanceof Error ? imgError.message : String(imgError));
+                embed.setImage(null);
+                await controlMsg.edit({ embeds: [embed], files: [], components: [row1, row2] });
             }
             console.log(`[PowerManager] Control embed updated successfully.`);
         } catch (error) {
