@@ -1,25 +1,7 @@
 # syntax=docker/dockerfile:1.7
-# Multi-stage bot: build TS -> slim non-root JS runtime.
+# Ultra-fast runner: receives pre-built dist from CI runner.
 
-FROM node:24-alpine AS deps
-WORKDIR /app
-RUN apk add --no-cache libc6-compat \
-  && npm install -g npm@11.6.4
-COPY package.json package-lock.json turbo.json ./
-COPY apps/web-server/package.json ./apps/web-server/
-COPY apps/web-client/package.json ./apps/web-client/
-COPY apps/discord-bot/package.json ./apps/discord-bot/
-COPY apps/game-bridge/package.json ./apps/game-bridge/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
-RUN npm ci
-
-FROM deps AS builder
-COPY . .
-RUN npx turbo run build --filter=discord-bot --filter=@crystaltides/shared
-RUN npm prune --omit=dev
-
-FROM node:24-alpine AS runner
+FROM node:24-alpine
 WORKDIR /app
 RUN apk add --no-cache libc6-compat curl openssh-client \
   && addgroup -g 1001 app && adduser -u 1001 -S -G app app
@@ -27,12 +9,12 @@ RUN apk add --no-cache libc6-compat curl openssh-client \
 ENV NODE_ENV=production
 ENV PORT=3002
 
-COPY --from=builder --chown=app:app /app/node_modules ./node_modules
-COPY --from=builder --chown=app:app /app/package.json ./package.json
-COPY --from=builder --chown=app:app /app/apps/discord-bot/dist ./apps/discord-bot/dist
-COPY --from=builder --chown=app:app /app/apps/discord-bot/package.json ./apps/discord-bot/package.json
-COPY --from=builder --chown=app:app /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder --chown=app:app /app/packages/shared/package.json ./packages/shared/package.json
+COPY --chown=app:app node_modules ./node_modules
+COPY --chown=app:app package.json ./package.json
+COPY --chown=app:app apps/discord-bot/dist ./apps/discord-bot/dist
+COPY --chown=app:app apps/discord-bot/package.json ./apps/discord-bot/package.json
+COPY --chown=app:app packages/shared/dist ./packages/shared/dist
+COPY --chown=app:app packages/shared/package.json ./packages/shared/package.json
 
 USER app
 EXPOSE 3002
