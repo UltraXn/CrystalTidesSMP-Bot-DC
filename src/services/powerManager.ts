@@ -282,7 +282,9 @@ export class PowerManager {
                     .setDisabled(this.activeTransition !== null || !isRunning),
             );
 
+            console.log(`[PowerManager] Updating control embed on Discord (Message ID: ${controlMsg.id})...`);
             await controlMsg.edit({ embeds: [embed], files: [attachment], components: [row1, row2] });
+            console.log(`[PowerManager] Control embed updated successfully.`);
         } catch (error) {
             console.error('[PowerManager] Error updating control embed:', error);
         }
