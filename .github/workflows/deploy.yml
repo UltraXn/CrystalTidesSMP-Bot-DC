@@ -1,0 +1,129 @@
+name: Deploy | Discord Bot (Oracle VPS)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/discord-bot/**'
+      - '.github/workflows/deploy-bot.yml'
+      - 'deploy/oracle-cloud/**'
+  workflow_dispatch:
+
+jobs:
+  typecheck-bot:
+    name: Typecheck Discord Bot
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout Discord Bot Submodule
+        run: git submodule update --init apps/discord-bot
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Bot Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck Discord Bot
+        working-directory: apps/discord-bot
+        run: pnpm tsc --noEmit
+
+  deploy-bot:
+    name: Deploy Discord Bot to Oracle VPS
+    needs: [typecheck-bot]
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout Discord Bot Submodule
+        run: git submodule update --init apps/discord-bot
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          mkdir -p node_modules/@napi-rs/canvas-linux-arm64-gnu
+          curl -sL https://registry.npmjs.org/@napi-rs/canvas-linux-arm64-gnu/-/canvas-linux-arm64-gnu-1.0.3.tgz | tar -xz -C node_modules/@napi-rs/canvas-linux-arm64-gnu --strip-components=1
+
+      - name: Build Bot & Shared Packages
+        run: |
+          pnpm turbo run build --filter=@crystaltides/shared
+          cd apps/discord-bot && pnpm tsc
+
+      - name: Package Bot Runtime
+        run: |
+          mkdir -p apps/game-bridge
+          if [ ! -f apps/game-bridge/package.json ]; then
+            echo '{"name":"@crystaltides/game-bridge","version":"1.0.0"}' > apps/game-bridge/package.json
+          fi
+          tar -czf bot-src.tar.gz \
+            --transform='s,^,crystaltides/,' \
+            package.json package-lock.json turbo.json node_modules \
+            apps/discord-bot \
+            packages/shared \
+            packages/eslint-config/package.json \
+            apps/web-server/package.json \
+            apps/web-client/package.json \
+            apps/game-bridge/package.json
+
+      - name: Copy Files to OCI VM
+        uses: appleboy/scp-action@master
+        with:
+          host: 150.136.151.234
+          username: ubuntu
+          key: ${{ secrets.OCI_SSH_KEY }}
+          source: 'bot-src.tar.gz'
+          target: '/home/ubuntu/oracle-cloud/'
+
+      - name: Copy Deploy Configs to OCI VM
+        uses: appleboy/scp-action@master
+        with:
+          host: 150.136.151.234
+          username: ubuntu
+          key: ${{ secrets.OCI_SSH_KEY }}
+          source: 'deploy/oracle-cloud/compose.yml,deploy/oracle-cloud/frps.toml,deploy/oracle-cloud/Caddyfile'
+          target: '/home/ubuntu/oracle-cloud/'
+          strip_components: 2
+
+      - name: Build and Relaunch Bot Container on OCI VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: 150.136.151.234
+          username: ubuntu
+          key: ${{ secrets.OCI_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu/oracle-cloud
+            tar -xzf bot-src.tar.gz
+            docker build --no-cache -t crystaltides-bot:latest \
+              -f crystaltides/apps/discord-bot/Dockerfile \
+              ./crystaltides
+            docker rm -f crystaltides-bot || true
+            docker compose up -d bot
+            rm -rf crystaltides bot-src.tar.gz
