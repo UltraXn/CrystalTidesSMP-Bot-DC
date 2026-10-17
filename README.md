@@ -50,12 +50,12 @@ graph TD
 
 ## 🛠️ Tech Stack
 
-| Componente | Tecnología | Propósito |
-| :--- | :--- | :--- |
-| **Engine** | [Bun](https://bun.sh) | Runtime de alto rendimiento para JS/TS |
-| **Library** | [Discord.js](https://discord.js.org) | Interacción con la API de Discord |
-| **Logic** | TypeScript | Robustez y escalabilidad del código |
-| **Backend** | Supabase & Web Server | Fuentes de verdad y lógica de negocio |
+| Componente  | Tecnología                           | Propósito                              |
+| :---------- | :----------------------------------- | :------------------------------------- |
+| **Engine**  | [Bun](https://bun.sh)                | Runtime de alto rendimiento para JS/TS |
+| **Library** | [Discord.js](https://discord.js.org) | Interacción con la API de Discord      |
+| **Logic**   | TypeScript                           | Robustez y escalabilidad del código    |
+| **Backend** | Supabase & Web Server                | Fuentes de verdad y lógica de negocio  |
 
 ---
 
@@ -78,12 +78,12 @@ graph TD
 
 ### 🔐 Configuración (.env)
 
-| Variable | Descripción |
-| :--- | :--- |
-| `DISCORD_TOKEN` | Token secreto del bot desde el portal de Discord |
-| `DISCORD_CLIENT_ID` | ID de aplicación del bot |
-| `DISCORD_GUILD_ID` | ID del servidor principal (para comandos de testeo) |
-| `API_BASE_URL` | Endpoint del Web Server de CrystalTides |
+| Variable            | Descripción                                         |
+| :------------------ | :-------------------------------------------------- |
+| `DISCORD_TOKEN`     | Token secreto del bot desde el portal de Discord    |
+| `DISCORD_CLIENT_ID` | ID de aplicación del bot                            |
+| `DISCORD_GUILD_ID`  | ID del servidor principal (para comandos de testeo) |
+| `API_BASE_URL`      | Endpoint del Web Server de CrystalTides             |
 
 ---
 

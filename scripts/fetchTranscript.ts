@@ -1,4 +1,12 @@
-import { Client, GatewayIntentBits, TextChannel, NewsChannel, Message, Collection, Snowflake } from 'discord.js';
+import {
+  Client,
+  GatewayIntentBits,
+  TextChannel,
+  NewsChannel,
+  Message,
+  Collection,
+  Snowflake,
+} from 'discord.js';
 import dotenv from 'dotenv';
 import fs from 'node:fs';
 
@@ -26,22 +34,29 @@ function isTargetChannel(channelName: string): boolean {
   const normalized = channelName.normalize('NFKD').toLowerCase();
   if (normalized.includes('anuncio')) return false;
 
-  const isGeneral = channelName.includes('𝖢𝗁𝖺𝗋𝗅𝖺') || normalized.includes('charla-general') || normalized.includes('general');
-  const isMinecraftChill = normalized.includes('minecraft-and-chill') || (normalized.includes('minecraft') && normalized.includes('chill'));
+  const isGeneral =
+    channelName.includes('𝖢𝗁𝖺𝗋𝗅𝖺') ||
+    normalized.includes('charla-general') ||
+    normalized.includes('general');
+  const isMinecraftChill =
+    normalized.includes('minecraft-and-chill') ||
+    (normalized.includes('minecraft') && normalized.includes('chill'));
   return isGeneral || isMinecraftChill;
 }
 
 function formatMessage(msg: Message): string | null {
   const content = msg.content?.trim() || '';
 
-  if (COMMAND_PREFIXES.some(prefix => content.startsWith(prefix))) {
+  if (COMMAND_PREFIXES.some((prefix) => content.startsWith(prefix))) {
     return null;
   }
 
   const author = msg.author.tag || msg.author.username;
   const dateStr = new Date(msg.createdTimestamp).toLocaleString('es-ES');
   const displayContent = content || (msg.attachments.size > 0 ? '[Archivo/Imagen]' : '[Sin texto]');
-  const replyInfo = msg.reference?.messageId ? ` *(respondiendo a ${msg.reference.messageId})*` : '';
+  const replyInfo = msg.reference?.messageId
+    ? ` *(respondiendo a ${msg.reference.messageId})*`
+    : '';
 
   return `**[${dateStr}] ${author}**${replyInfo}:\n${displayContent}\n\n`;
 }
@@ -49,7 +64,7 @@ function formatMessage(msg: Message): string | null {
 function processBatch(
   messages: Collection<Snowflake, Message>,
   cutoffTimestamp: number,
-  result: { log: string; count: number; lastId: string | undefined }
+  result: { log: string; count: number; lastId: string | undefined },
 ): boolean {
   for (const [msgId, msg] of messages) {
     result.lastId = msgId;
@@ -66,7 +81,7 @@ function processBatch(
 
 async function fetchChannelMessages(
   textChannel: TextChannel | NewsChannel,
-  cutoffTimestamp: number
+  cutoffTimestamp: number,
 ): Promise<string> {
   const result = { log: '', count: 0, lastId: undefined as string | undefined };
 
@@ -74,10 +89,12 @@ async function fetchChannelMessages(
     const options: { limit: number; before?: string } = { limit: 100 };
     if (result.lastId) options.before = result.lastId;
 
-    const messages: Collection<Snowflake, Message> | null = await textChannel.messages.fetch(options).catch(e => {
-      console.error(`Error fetching channel #${textChannel.name}:`, e.message);
-      return null;
-    });
+    const messages: Collection<Snowflake, Message> | null = await textChannel.messages
+      .fetch(options)
+      .catch((e) => {
+        console.error(`Error fetching channel #${textChannel.name}:`, e.message);
+        return null;
+      });
 
     if (!messages || messages.size === 0) break;
     if (processBatch(messages, cutoffTimestamp, result) || messages.size < 100) break;
@@ -111,7 +128,6 @@ client.once('ready', async () => {
     const outputPath = String.raw`C:\Users\nacho\Desktop\Abyssal Throughts\Abyssal Throughts\40 - Projects\CrystalTidesSMP\Management\Discord_Transcript_3_Days.md`;
     fs.writeFileSync(outputPath, transcriptMarkdown, 'utf-8');
     console.log(`SUCCESS! Targeted Transcript saved to ${outputPath}`);
-
   } catch (err) {
     console.error('Error during transcript generation:', err);
   } finally {

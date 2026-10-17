@@ -6,6 +6,7 @@
   "description": "Bot oficial para la integración entre Discord, Minecraft y Web de CrystalTides SMP.",
   "scripts": {
     "build": "tsc",
+    "test": "vitest run --coverage",
     "start": "node dist/src/index.js",
     "dev": "tsx watch src/index.ts",
     "deploy": "tsx src/deploy-commands.ts"
