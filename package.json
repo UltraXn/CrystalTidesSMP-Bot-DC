@@ -12,7 +12,7 @@
     "deploy": "tsx src/deploy-commands.ts"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^1.0.3",
+    "@napi-rs/canvas": "^1.0.13",
     "@supabase/supabase-js": "^2.47.10",
     "discord.js": "^14.25.1",
     "dotenv": "^16.4.7",
